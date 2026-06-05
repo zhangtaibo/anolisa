@@ -16,6 +16,7 @@ mod approval_details;
 mod approval_journal;
 mod approval_receipt;
 mod card;
+mod consultation;
 mod markdown;
 mod question;
 mod recommendation;
@@ -29,6 +30,7 @@ pub use crate::approval_actions::{
 };
 pub use activity::{ActivityDetailsPanelModel, ActivityPanelModel, ActivityRowModel};
 pub use approval::ApprovalPanelModel;
+pub use consultation::ConsultationCardModel;
 pub use approval_details::ApprovalDetailsPanelModel;
 pub use approval_journal::{ApprovalJournalEntryModel, ApprovalJournalPanelModel};
 pub use approval_receipt::ApprovalReceiptPanelModel;

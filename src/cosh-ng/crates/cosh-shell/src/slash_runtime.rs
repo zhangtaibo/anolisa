@@ -28,6 +28,10 @@ pub(super) fn render_slash_actions<W: Write>(
                 render_help(state, output)?;
                 true
             }
+            SlashCommand::Hooks => {
+                render_hooks(state, output)?;
+                true
+            }
             SlashCommand::Mode(arg, sub) => render_mode_command(arg, sub, state, output)?,
             SlashCommand::Info(command) => {
                 render_info(command, output)?;
@@ -73,6 +77,7 @@ fn clear_shell_prompt_line<W: Write>(output: &mut W) -> std::io::Result<()> {
 enum SlashCommand<'a> {
     Noop,
     Help,
+    Hooks,
     Mode(Option<&'a str>, Option<&'a str>),
     Info(SlashInfoCommand),
     Hint(&'a str),
@@ -85,6 +90,7 @@ impl<'a> SlashCommand<'a> {
         let token = parts.next()?;
         match token {
             "/help" => Some(Self::Help),
+            "/hooks" => Some(Self::Hooks),
             "/mode" | "/approval-mode" => {
                 let first = parts.next();
                 let second = parts.next();
@@ -130,6 +136,22 @@ fn render_help<W: Write>(state: &InlineState, output: &mut W) -> std::io::Result
             state.approval_mode.label(),
             state.analysis_mode.label()
         )),
+    )
+}
+
+fn render_hooks<W: Write>(state: &InlineState, output: &mut W) -> std::io::Result<()> {
+    let hooks = state.hook_engine.registered_hooks();
+    let body = if hooks.is_empty() {
+        vec!["No hooks registered.".to_string()]
+    } else {
+        hooks.iter().map(|id| id.to_string()).collect()
+    };
+
+    RatatuiInlineRenderer::for_terminal().write_notice(
+        output,
+        "Registered hooks",
+        body,
+        Some(&format!("{} hook(s) active.", hooks.len())),
     )
 }
 
@@ -234,6 +256,11 @@ fn all_slash_command_hints() -> &'static [SlashCommandHint] {
             name: "/help",
             usage: "/help",
             summary: "show command reference",
+        },
+        SlashCommandHint {
+            name: "/hooks",
+            usage: "/hooks",
+            summary: "list registered hooks",
         },
         SlashCommandHint {
             name: "/mode",
