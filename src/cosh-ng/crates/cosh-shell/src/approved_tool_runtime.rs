@@ -268,5 +268,7 @@ fn tool_result_agent_request(
         findings: Vec::new(),
         mode: AgentMode::RecommendOnly,
         user_confirmed: true,
+        hook_finding: None,
+        recommended_skill: None,
     }
 }
