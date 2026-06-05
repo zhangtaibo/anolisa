@@ -1,6 +1,7 @@
 pub mod adapter;
 pub mod agent_render;
 mod approval_actions;
+pub mod exit_classify;
 pub mod governance;
 pub mod input;
 pub mod interactive;
@@ -14,6 +15,7 @@ pub mod shell_host;
 pub mod tool_broker;
 pub mod types;
 
+pub use exit_classify::*;
 pub use adapter::{
     adapter_for_kind, AdapterError, AdapterInstance, AdapterKind, AgentAdapter,
     AgentBackendCapabilities, AgentRunHandle, AgentRunPoll, ClaudeCodeAdapter, FakeAgentAdapter,
