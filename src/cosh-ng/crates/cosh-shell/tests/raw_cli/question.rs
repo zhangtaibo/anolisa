@@ -6,8 +6,8 @@ fn raw_cli_agent_question_accepts_card_answer_choice() {
         "fake",
         vec![
             (b"?? ask question\n".to_vec(), Duration::ZERO),
-            (b"\x1b[C\n".to_vec(), Duration::from_millis(800)),
-            (b"exit\n".to_vec(), Duration::from_millis(500)),
+            (b"\x1b[C\n".to_vec(), Duration::from_millis(400)),
+            (b"exit\n".to_vec(), Duration::from_millis(200)),
         ],
     );
 
@@ -57,12 +57,12 @@ fn raw_cli_zsh_question_card_capture_does_not_leak_to_shell() {
         &["--shell", "zsh"],
         vec![
             (b"?? ask question\n".to_vec(), Duration::ZERO),
-            (b"\x1b[C\n".to_vec(), Duration::from_millis(800)),
+            (b"\x1b[C\n".to_vec(), Duration::from_millis(400)),
             (
                 b"echo after-zsh-question\n".to_vec(),
-                Duration::from_millis(500),
+                Duration::from_millis(300),
             ),
-            (b"exit\n".to_vec(), Duration::from_millis(300)),
+            (b"exit\n".to_vec(), Duration::from_millis(200)),
         ],
     );
 
@@ -90,8 +90,8 @@ fn raw_cli_agent_question_answer_drops_stale_held_text() {
         "fake",
         vec![
             (b"?? stream stale question\n".to_vec(), Duration::ZERO),
-            (b"\x1b[B\n".to_vec(), Duration::from_millis(500)),
-            (b"exit\n".to_vec(), Duration::from_millis(900)),
+            (b"\x1b[B\n".to_vec(), Duration::from_millis(300)),
+            (b"exit\n".to_vec(), Duration::from_millis(300)),
         ],
     );
 
@@ -114,8 +114,8 @@ fn raw_cli_agent_question_accepts_multiple_card_answers() {
         "fake",
         vec![
             (b"?? ask multi question\n".to_vec(), Duration::ZERO),
-            (b" \t \n".to_vec(), Duration::from_millis(500)),
-            (b"exit\n".to_vec(), Duration::from_millis(500)),
+            (b" \t \n".to_vec(), Duration::from_millis(300)),
+            (b"exit\n".to_vec(), Duration::from_millis(200)),
         ],
     );
 
@@ -150,8 +150,8 @@ fn raw_cli_agent_question_accepts_multiple_answers_with_custom_card_answer() {
         "fake",
         vec![
             (b"?? ask multi question\n".to_vec(), Duration::ZERO),
-            (b" \t\t\tDocs\n".to_vec(), Duration::from_millis(500)),
-            (b"exit\n".to_vec(), Duration::from_millis(500)),
+            (b" \t\t\tDocs\n".to_vec(), Duration::from_millis(300)),
+            (b"exit\n".to_vec(), Duration::from_millis(200)),
         ],
     );
 
@@ -180,9 +180,9 @@ fn raw_cli_agent_question_accepts_natural_language_answer() {
             (b"?? ask question\n".to_vec(), Duration::ZERO),
             (
                 "\u{7eff}\u{8272}\n".as_bytes().to_vec(),
-                Duration::from_millis(500),
+                Duration::from_millis(300),
             ),
-            (b"exit\n".to_vec(), Duration::from_millis(500)),
+            (b"exit\n".to_vec(), Duration::from_millis(200)),
         ],
     );
 
@@ -213,9 +213,9 @@ fn raw_cli_agent_question_accepts_custom_card_answer() {
             (b"?? ask question\n".to_vec(), Duration::ZERO),
             (
                 "\t\t\t\u{7ea2}\u{8272}\n".as_bytes().to_vec(),
-                Duration::from_millis(500),
+                Duration::from_millis(300),
             ),
-            (b"exit\n".to_vec(), Duration::from_millis(500)),
+            (b"exit\n".to_vec(), Duration::from_millis(200)),
         ],
     );
 
@@ -247,9 +247,9 @@ fn raw_cli_agent_question_accepts_free_text_only_answer() {
             (b"?? ask free question\n".to_vec(), Duration::ZERO),
             (
                 "\u{7279}\u{6027}\u{5206}\u{652f}\n".as_bytes().to_vec(),
-                Duration::from_millis(500),
+                Duration::from_millis(300),
             ),
-            (b"exit\n".to_vec(), Duration::from_millis(500)),
+            (b"exit\n".to_vec(), Duration::from_millis(200)),
         ],
     );
 

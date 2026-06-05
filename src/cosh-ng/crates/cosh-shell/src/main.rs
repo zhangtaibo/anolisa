@@ -90,8 +90,14 @@ fn main() {
         std::process::exit(0);
     }
 
-    if let Some(status) = passthrough_non_interactive(&args) {
-        std::process::exit(status);
+    let has_subcommand = matches!(
+        args.get(1).map(String::as_str),
+        Some("demo" | "host-demo" | "raw" | "interactive" | "interactive-demo" | "adapter-demo")
+    );
+    if !has_subcommand {
+        if let Some(status) = passthrough_non_interactive(&args) {
+            std::process::exit(status);
+        }
     }
 
     let status = match args.get(1).map(String::as_str) {
