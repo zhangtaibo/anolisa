@@ -168,8 +168,9 @@ fn drain_raw_input_events<W: Write>(
         match event {
             RawInputEvent::CtrlC => parser.push_control_event("ctrl_c"),
             RawInputEvent::CandidateRedraw { input, hint } => {
+                write!(output, "\r\x1b[2K")?;
                 if !native_mode {
-                    write!(output, "\r\x1b[2K{prompt}")?;
+                    write!(output, "{prompt}")?;
                 }
                 output.write_all(&input)?;
                 if let Some(hint) = hint {
@@ -178,10 +179,11 @@ fn drain_raw_input_events<W: Write>(
                 output.flush()?;
             }
             RawInputEvent::CandidateCommit(input) => {
+                write!(output, "\r\x1b[2K")?;
                 if !native_mode {
-                    write!(output, "\r\x1b[2K{prompt}")?;
-                    output.write_all(&input)?;
+                    write!(output, "{prompt}")?;
                 }
+                output.write_all(&input)?;
                 writeln!(output)?;
                 output.flush()?;
             }
