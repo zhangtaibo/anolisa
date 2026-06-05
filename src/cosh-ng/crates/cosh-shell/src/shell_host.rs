@@ -542,6 +542,7 @@ where
         Arc::clone(&input_mode),
     );
     let mut last_winsize = config.winsize;
+    let relay_prompt = if config.native_mode { "" } else { &config.prompt };
     read_raw_until_exit(
         &mut session.master,
         &mut session.child,
@@ -551,7 +552,7 @@ where
         &input_event_receiver,
         &input_mode,
         &mut last_winsize,
-        &config.prompt,
+        relay_prompt,
     )?;
     let display_start = session.parser.display.len();
     session.parser.flush_pending();
