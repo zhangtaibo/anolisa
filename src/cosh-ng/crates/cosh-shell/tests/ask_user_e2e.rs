@@ -56,8 +56,7 @@ emit({"type": "stream_event", "event": {"type": "message_stop"}})
 emit({"type": "result", "subtype": "success", "is_error": False, "result": f"You chose: {answer}", "session_id": "mock-sess", "duration_ms": 100})
 "#;
 
-    let script_path =
-        std::env::temp_dir().join(format!("mock_cosh_tui_{}.py", std::process::id()));
+    let script_path = std::env::temp_dir().join(format!("mock_cosh_tui_{}.py", std::process::id()));
     std::fs::write(&script_path, mock_script).expect("write mock script");
 
     #[cfg(unix)]

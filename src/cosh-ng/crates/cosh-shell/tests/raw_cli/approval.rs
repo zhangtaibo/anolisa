@@ -138,7 +138,7 @@ fn raw_cli_approval_cancel_records_receipt_and_advances_queue() {
         "fake",
         vec![
             (b"?? request tool approval\n".to_vec(), Duration::ZERO),
-            (b"\x1b".to_vec(), Duration::from_millis(500)),
+            (b"\x1b".to_vec(), Duration::from_millis(300)),
             (b"\x1b".to_vec(), Duration::from_millis(50)),
             (b"\x1b".to_vec(), Duration::from_millis(100)),
             (b"\x1b".to_vec(), Duration::from_millis(50)),
@@ -165,15 +165,13 @@ fn raw_cli_approval_cancel_records_receipt_and_advances_queue() {
 
 #[test]
 fn raw_cli_details_approvals_renders_decision_journal_panel() {
-    let output = run_raw_cli_ask_with_delayed_input(
-        vec![
-            (b"?? request tool approval\n".to_vec(), Duration::ZERO),
-            (b"\n".to_vec(), Duration::from_millis(1_200)),
-            (b"\x1b[C\n".to_vec(), Duration::from_millis(300)),
-            (b"/details approvals\n".to_vec(), Duration::from_millis(500)),
-            (b"exit\n".to_vec(), Duration::from_millis(200)),
-        ],
-    );
+    let output = run_raw_cli_ask_with_delayed_input(vec![
+        (b"?? request tool approval\n".to_vec(), Duration::ZERO),
+        (b"\n".to_vec(), Duration::from_millis(1_200)),
+        (b"\x1b[C\n".to_vec(), Duration::from_millis(300)),
+        (b"/details approvals\n".to_vec(), Duration::from_millis(500)),
+        (b"exit\n".to_vec(), Duration::from_millis(200)),
+    ]);
 
     assert!(output.contains("Approval journal"), "{output}");
     assert!(output.contains("2 decisions"), "{output}");
@@ -195,14 +193,12 @@ fn raw_cli_details_approvals_renders_decision_journal_panel() {
 
 #[test]
 fn raw_cli_details_for_approval_uses_structured_panel() {
-    let output = run_raw_cli_ask_with_delayed_input(
-        vec![
-            (b"?? request tool approval\n".to_vec(), Duration::ZERO),
-            (b"d".to_vec(), Duration::from_millis(1_200)),
-            (b"\x1b".to_vec(), Duration::from_millis(300)),
-            (b"exit\n".to_vec(), Duration::from_millis(200)),
-        ],
-    );
+    let output = run_raw_cli_ask_with_delayed_input(vec![
+        (b"?? request tool approval\n".to_vec(), Duration::ZERO),
+        (b"d".to_vec(), Duration::from_millis(1_200)),
+        (b"\x1b".to_vec(), Duration::from_millis(300)),
+        (b"exit\n".to_vec(), Duration::from_millis(200)),
+    ]);
 
     assert!(output.contains("Approval required"), "{output}");
     assert!(output.contains("tool request"), "{output}");
@@ -212,7 +208,10 @@ fn raw_cli_details_for_approval_uses_structured_panel() {
         output.contains("Policy: user approval is required before any executable tool request"),
         "{output}"
     );
-    assert!(output.contains("Keys:") && output.contains("d details"), "{output}");
+    assert!(
+        output.contains("Keys:") && output.contains("d details"),
+        "{output}"
+    );
     assert!(output.contains("Command:"), "{output}");
     assert!(output.contains("git status"), "{output}");
     assert!(!output.contains("Subject: tool shell"), "{output}");
@@ -223,14 +222,12 @@ fn raw_cli_details_for_approval_uses_structured_panel() {
 
 #[test]
 fn raw_cli_approval_text_input_does_not_confirm_or_leak_to_bash() {
-    let output = run_raw_cli_ask_with_delayed_input(
-        vec![
-            (b"?? request tool approval\n".to_vec(), Duration::ZERO),
-            (b"exit\n".to_vec(), Duration::from_millis(300)),
-            (b"\x1b".to_vec(), Duration::from_millis(200)),
-            (b"\x1b".to_vec(), Duration::from_millis(200)),
-        ],
-    );
+    let output = run_raw_cli_ask_with_delayed_input(vec![
+        (b"?? request tool approval\n".to_vec(), Duration::ZERO),
+        (b"exit\n".to_vec(), Duration::from_millis(300)),
+        (b"\x1b".to_vec(), Duration::from_millis(200)),
+        (b"\x1b".to_vec(), Duration::from_millis(200)),
+    ]);
 
     assert!(output.contains("Approval required"));
     assert!(output.contains("req-1 · tool request · medium risk"));
@@ -297,15 +294,13 @@ fn raw_cli_approval_arrow_focus_updates_and_confirm_uses_selection() {
 
 #[test]
 fn raw_cli_approval_split_arrow_sequence_does_not_cancel() {
-    let output = run_raw_cli_ask_with_delayed_input(
-        vec![
-            (b"?? stream tool approval\n".to_vec(), Duration::ZERO),
-            (b"\x1b".to_vec(), Duration::from_millis(800)),
-            (b"[".to_vec(), Duration::from_millis(50)),
-            (b"C\n".to_vec(), Duration::from_millis(50)),
-            (b"exit\n".to_vec(), Duration::from_millis(300)),
-        ],
-    );
+    let output = run_raw_cli_ask_with_delayed_input(vec![
+        (b"?? stream tool approval\n".to_vec(), Duration::ZERO),
+        (b"\x1b".to_vec(), Duration::from_millis(400)),
+        (b"[".to_vec(), Duration::from_millis(50)),
+        (b"C\n".to_vec(), Duration::from_millis(50)),
+        (b"exit\n".to_vec(), Duration::from_millis(300)),
+    ]);
 
     assert!(output.contains("Approval required"));
     assert!(output.contains("req-1 · tool request · medium risk"));
@@ -350,13 +345,11 @@ fn raw_cli_approval_application_cursor_arrow_updates_focus() {
 
 #[test]
 fn raw_cli_streaming_tool_approval_renders_before_agent_finishes() {
-    let output = run_raw_cli_ask_with_delayed_input(
-        vec![
-            (b"?? stream tool approval\n".to_vec(), Duration::ZERO),
-            (b"\n".to_vec(), Duration::from_millis(1_200)),
-            (b"exit\n".to_vec(), Duration::from_millis(300)),
-        ],
-    );
+    let output = run_raw_cli_ask_with_delayed_input(vec![
+        (b"?? stream tool approval\n".to_vec(), Duration::ZERO),
+        (b"\n".to_vec(), Duration::from_millis(1_200)),
+        (b"exit\n".to_vec(), Duration::from_millis(300)),
+    ]);
 
     assert!(output.contains("Preparing a streamed tool request before finishing."));
     assert!(output.contains("Approval required"));
@@ -389,13 +382,11 @@ fn raw_cli_streaming_tool_approval_renders_before_agent_finishes() {
 
 #[test]
 fn raw_cli_approved_bash_tool_prints_native_command_and_stdout() {
-    let output = run_raw_cli_ask_with_delayed_input(
-        vec![
-            (b"?? stream pwd tool approval\n".to_vec(), Duration::ZERO),
-            (b"\n".to_vec(), Duration::from_millis(1_200)),
-            (b"exit\n".to_vec(), Duration::from_millis(300)),
-        ],
-    );
+    let output = run_raw_cli_ask_with_delayed_input(vec![
+        (b"?? stream pwd tool approval\n".to_vec(), Duration::ZERO),
+        (b"\n".to_vec(), Duration::from_millis(1_200)),
+        (b"exit\n".to_vec(), Duration::from_millis(300)),
+    ]);
     let expected_cwd = env!("CARGO_MANIFEST_DIR");
 
     assert!(output.contains("Preparing a streamed pwd request before finishing."));
@@ -415,13 +406,11 @@ fn raw_cli_approved_bash_tool_prints_native_command_and_stdout() {
 
 #[test]
 fn raw_cli_approved_bash_tool_drops_stale_pre_approval_followup() {
-    let output = run_raw_cli_ask_with_delayed_input(
-        vec![
-            (b"?? stream stale tool approval\n".to_vec(), Duration::ZERO),
-            (b"\n".to_vec(), Duration::from_millis(800)),
-            (b"exit\n".to_vec(), Duration::from_millis(300)),
-        ],
-    );
+    let output = run_raw_cli_ask_with_delayed_input(vec![
+        (b"?? stream stale tool approval\n".to_vec(), Duration::ZERO),
+        (b"\n".to_vec(), Duration::from_millis(800)),
+        (b"exit\n".to_vec(), Duration::from_millis(300)),
+    ]);
     let expected_cwd = env!("CARGO_MANIFEST_DIR");
 
     assert!(output.contains("Preparing a command before approval."));
@@ -443,13 +432,11 @@ fn raw_cli_approved_bash_tool_drops_stale_pre_approval_followup() {
 
 #[test]
 fn raw_cli_denied_bash_tool_does_not_render_stale_executed_claim() {
-    let output = run_raw_cli_ask_with_delayed_input(
-        vec![
-            (b"?? stream pwd tool approval\n".to_vec(), Duration::ZERO),
-            (b"\x1b[C\n".to_vec(), Duration::from_millis(800)),
-            (b"exit\n".to_vec(), Duration::from_millis(300)),
-        ],
-    );
+    let output = run_raw_cli_ask_with_delayed_input(vec![
+        (b"?? stream pwd tool approval\n".to_vec(), Duration::ZERO),
+        (b"\x1b[C\n".to_vec(), Duration::from_millis(800)),
+        (b"exit\n".to_vec(), Duration::from_millis(300)),
+    ]);
     let expected_cwd = env!("CARGO_MANIFEST_DIR");
 
     assert!(output.contains("Preparing a streamed pwd request before finishing."));

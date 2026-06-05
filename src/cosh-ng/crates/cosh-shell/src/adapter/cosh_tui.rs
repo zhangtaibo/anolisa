@@ -85,10 +85,7 @@ impl CoshTuiAdapter {
             CoshApprovalMode::Auto => "auto",
             CoshApprovalMode::Trust => "trust",
         };
-        args.extend([
-            "--approval-mode".to_string(),
-            approval_mode.to_string(),
-        ]);
+        args.extend(["--approval-mode".to_string(), approval_mode.to_string()]);
 
         if let Some(session_id) = resume_session {
             args.extend(["--resume".to_string(), session_id]);
@@ -423,10 +420,7 @@ fn attach_run(
     }
 }
 
-fn persistent_stdin_writer(
-    stdin: std::process::ChildStdin,
-    rx: mpsc::Receiver<StdinCommand>,
-) {
+fn persistent_stdin_writer(stdin: std::process::ChildStdin, rx: mpsc::Receiver<StdinCommand>) {
     use std::io::Write;
     let mut writer = std::io::BufWriter::new(stdin);
 
@@ -596,8 +590,7 @@ fn question_bridge(
     stdin_tx: mpsc::Sender<StdinCommand>,
 ) {
     while let Ok(response) = rx.recv() {
-        let msg =
-            super::control_protocol::serialize_answer(&response.request_id, &response.answer);
+        let msg = super::control_protocol::serialize_answer(&response.request_id, &response.answer);
         if stdin_tx.send(StdinCommand::SendLine(msg)).is_err() {
             break;
         }

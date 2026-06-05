@@ -615,9 +615,11 @@ fn synthetic_question_from_text(run_id: &str, text: &str) -> Option<AgentEvent> 
             items
                 .iter()
                 .filter_map(|item| {
-                    item.as_str()
-                        .map(ToString::to_string)
-                        .or_else(|| item.get("label").and_then(|l| l.as_str()).map(ToString::to_string))
+                    item.as_str().map(ToString::to_string).or_else(|| {
+                        item.get("label")
+                            .and_then(|l| l.as_str())
+                            .map(ToString::to_string)
+                    })
                 })
                 .collect::<Vec<_>>()
         })

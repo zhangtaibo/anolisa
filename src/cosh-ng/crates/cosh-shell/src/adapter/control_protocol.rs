@@ -220,10 +220,7 @@ mod tests {
                 assert_eq!(question, "What color?");
                 assert_eq!(options.len(), 2);
                 assert_eq!(options[0].label, "Red");
-                assert_eq!(
-                    options[0].description.as_deref(),
-                    Some("Warm color")
-                );
+                assert_eq!(options[0].description.as_deref(), Some("Warm color"));
                 assert_eq!(options[1].label, "Blue");
                 assert!(options[1].description.is_none());
                 assert!(allow_free_text);
