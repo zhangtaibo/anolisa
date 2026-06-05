@@ -268,6 +268,8 @@ fn parse_raw_shell(value: &str) -> RawShellKind {
 }
 
 fn run_raw(adapter_name: &str, run_model: bool, shell_kind: RawShellKind) -> i32 {
+    let args = std::env::args().collect::<Vec<_>>();
+
     let Some(kind) = AdapterKind::parse(adapter_name) else {
         eprintln!("unknown adapter: {adapter_name}");
         return 2;
@@ -275,7 +277,19 @@ fn run_raw(adapter_name: &str, run_model: bool, shell_kind: RawShellKind) -> i32
 
     let work_dir =
         std::env::temp_dir().join(format!("cosh-shell-raw-session-{}", std::process::id()));
-    let config = ShellHostConfig::new("raw-session", work_dir);
+    let mut config = ShellHostConfig::new("raw-session", work_dir);
+
+    let isolated = args.iter().any(|a| a == "--isolated")
+        || std::env::var("COSH_SHELL_ISOLATED").as_deref() == Ok("1");
+    if isolated {
+        config.native_mode = false;
+    }
+
+    let login = args
+        .first()
+        .map_or(false, |a| a.starts_with('-'))
+        || args.iter().any(|a| a == "--login" || a == "-l");
+    config.login_shell = login;
     let adapter = build_adapter(kind, run_model);
     let mut inline_state = InlineState::with_raw_session_dir(&config.work_dir);
     let mut hook_engine = cosh_shell::HookEngine::new();
@@ -783,6 +797,8 @@ fn print_usage_help() {
          Options:\n\
            -c <command>            Execute command and exit (passthrough to bash/zsh)\n\
            --shell <shell>         Use specified shell (bash, zsh) [default: bash]\n\
+           --isolated              Isolated mode: skip user rcfiles\n\
+           --login, -l             Treat as login shell\n\
            --version               Print version\n\
            --help                  Print help"
     );

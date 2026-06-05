@@ -795,6 +795,14 @@ fn set_nonblocking(fd: i32) -> io::Result<()> {
     Ok(())
 }
 
+fn shell_ready_count(parser: &OscParser, config: &ShellHostConfig) -> usize {
+    if config.native_mode {
+        parser.precmd_count()
+    } else {
+        parser.prompt_count(config.prompt.as_bytes())
+    }
+}
+
 fn nix_to_io(err: nix::Error) -> io::Error {
     io::Error::other(err)
 }
