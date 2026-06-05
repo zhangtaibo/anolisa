@@ -65,12 +65,16 @@ fn start_shell_session(
     adapter.configure_command(&mut command, &rcfile, config);
     command
         .env("COSH_SESSION_ID", &config.session_id)
-        .env("COSH_HISTFILE", config.work_dir.join("history"))
-        .env("COSH_POC_PS1", &config.prompt)
-        .env("BASH_SILENCE_DEPRECATION_WARNING", "1")
         .stdin(Stdio::from(stdin))
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(slave));
+    if !config.native_mode {
+        command
+            .env("COSH_HISTFILE", config.work_dir.join("history"))
+            .env("COSH_POC_PS1", &config.prompt)
+            .env("BASH_SILENCE_DEPRECATION_WARNING", "1")
+            .env("COSH_SHELL_ISOLATED", "1");
+    }
 
     unsafe {
         command.pre_exec(|| {

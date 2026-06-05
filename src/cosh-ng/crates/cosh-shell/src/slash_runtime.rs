@@ -28,7 +28,7 @@ pub(super) fn render_slash_actions<W: Write>(
                 render_help(state, output)?;
                 true
             }
-            SlashCommand::Mode(arg) => render_mode_command(arg, state, output)?,
+            SlashCommand::Mode(arg, sub) => render_mode_command(arg, sub, state, output)?,
             SlashCommand::Info(command) => {
                 render_info(command, output)?;
                 true
@@ -73,7 +73,7 @@ fn clear_shell_prompt_line<W: Write>(output: &mut W) -> std::io::Result<()> {
 enum SlashCommand<'a> {
     Noop,
     Help,
-    Mode(Option<&'a str>),
+    Mode(Option<&'a str>, Option<&'a str>),
     Info(SlashInfoCommand),
     Hint(&'a str),
     Unknown(&'a str),
@@ -85,7 +85,11 @@ impl<'a> SlashCommand<'a> {
         let token = parts.next()?;
         match token {
             "/help" => Some(Self::Help),
-            "/mode" | "/approval-mode" => Some(Self::Mode(parts.next())),
+            "/mode" | "/approval-mode" => {
+                let first = parts.next();
+                let second = parts.next();
+                Some(Self::Mode(first, second))
+            }
             "/audit" => Some(Self::Info(SlashInfoCommand::Audit)),
             "/config" => Some(Self::Info(SlashInfoCommand::Config)),
             "/skill" => Some(Self::Info(SlashInfoCommand::Skill)),
@@ -122,8 +126,9 @@ fn render_help<W: Write>(state: &InlineState, output: &mut W) -> std::io::Result
         "Slash commands",
         body,
         Some(&format!(
-            "Mode: {}. Default ask confirms every Agent action; auto only skips approval for low-risk read-only Bash tools.",
-            state.approval_mode.label()
+            "Approval: {}. Analysis: {}.",
+            state.approval_mode.label(),
+            state.analysis_mode.label()
         )),
     )
 }
@@ -234,6 +239,11 @@ fn all_slash_command_hints() -> &'static [SlashCommandHint] {
             name: "/mode",
             usage: "/mode [ask|auto]",
             summary: "show or change approval mode",
+        },
+        SlashCommandHint {
+            name: "/mode",
+            usage: "/mode analysis [smart|auto|manual]",
+            summary: "show or change analysis mode",
         },
         SlashCommandHint {
             name: "/skill",

@@ -34,36 +34,24 @@ pub(super) fn render_startup_banner<W: Write>(
     };
     write!(output, "\r\x1b[2K")?;
     let renderer = RatatuiInlineRenderer::for_terminal();
-    renderer.write_banner(
-        output,
-        "cosh-shell",
-        vec![
-            String::new(),
-            "\u{250c}\u{2500}\u{2510}\u{250c}\u{2500}\u{2510}\u{250c}\u{2500}\u{2510}\u{252c} \u{252c}".to_string(),
-            "\u{2502}  \u{2502} \u{2502}\u{2514}\u{2500}\u{2510}\u{251c}\u{2500}\u{2524}  shell".to_string(),
-            "\u{2514}\u{2500}\u{2518}\u{2514}\u{2500}\u{2518}\u{2514}\u{2500}\u{2518}\u{2534} \u{2534}".to_string(),
-            String::new(),
-            format!(
-                "Adapter: {}   Shell: {shell_label}   Mode: {}",
-                adapter.name(),
-                state.approval_mode.label()
-            ),
-            ai_line,
-            format!("cwd: {cwd}"),
-            String::new(),
-            "/help \u{00b7} /mode \u{00b7} /details \u{00b7} /skill".to_string(),
-            startup_hook.summary,
-        ],
-        Some("Agent actions still require approval."),
-    )?;
+    let mut body = vec![
+        format!(
+            "Adapter: {} \u{00b7} Shell: {shell_label} \u{00b7} Mode: {}",
+            adapter.name(),
+            state.approval_mode.label()
+        ),
+        format!("cwd: {cwd}"),
+        ai_line,
+        "/help \u{00b7} /mode \u{00b7} /explain".to_string(),
+    ];
     if let Some(markdown) = startup_hook.markdown {
-        renderer.write_notice(
-            output,
-            "Startup hooks",
-            renderer.markdown_text_lines(&markdown),
-            Some("Read-only startup checks."),
-        )?;
+        body.push(String::new());
+        body.push(startup_hook.summary);
+        for line in renderer.markdown_text_lines(&markdown) {
+            body.push(line);
+        }
     }
+    renderer.write_banner(output, "cosh-shell", body, None)?;
     writeln!(output)?;
     write!(output, "cosh-osc$ ")?;
     output.flush()

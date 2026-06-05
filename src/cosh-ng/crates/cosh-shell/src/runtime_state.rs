@@ -1,11 +1,48 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use cosh_shell::{agent_render::ApprovalPanelAction, GovernedEvent, HookEngine};
 
 use super::activity_runtime::RuntimeActivityRow;
 use super::agent_run_runtime::{ActiveAgentRun, PendingAgentRequest};
 use super::question_runtime::RuntimeUserQuestion;
+
+pub(super) struct AnalysisThrottle {
+    recent: HashMap<String, (Instant, usize)>,
+    cooldown_secs: u64,
+    max_consecutive: usize,
+}
+
+impl Default for AnalysisThrottle {
+    fn default() -> Self {
+        Self {
+            recent: HashMap::new(),
+            cooldown_secs: 30,
+            max_consecutive: 3,
+        }
+    }
+}
+
+impl AnalysisThrottle {
+    pub(super) fn should_throttle(&mut self, command: &str) -> bool {
+        let key = normalize_command(command);
+        let now = Instant::now();
+        if let Some((last, count)) = self.recent.get_mut(&key) {
+            if now.duration_since(*last).as_secs() < self.cooldown_secs {
+                *count += 1;
+                *last = now;
+                return *count > self.max_consecutive;
+            }
+        }
+        self.recent.insert(key, (now, 1));
+        false
+    }
+}
+
+fn normalize_command(cmd: &str) -> String {
+    cosh_shell::first_program_token(cmd).to_string()
+}
 
 #[derive(Default)]
 pub(super) struct InlineState {
@@ -49,6 +86,7 @@ pub(super) struct InlineState {
     pub(super) shell_exited: bool,
     pub(super) approval_mode: ApprovalMode,
     pub(super) analysis_mode: AnalysisMode,
+    pub(super) analysis_throttle: AnalysisThrottle,
     pub(super) needs_prompt_after_agent_run: bool,
     pub(super) hook_engine: HookEngine,
 }
@@ -90,6 +128,16 @@ pub(super) struct RuntimeCommandHookHint {
 pub(super) struct RuntimeModePanel {
     pub(super) id: String,
     pub(super) selected_option: usize,
+}
+
+impl AnalysisMode {
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Smart => "smart",
+            Self::Auto => "auto",
+            Self::Manual => "manual",
+        }
+    }
 }
 
 impl ApprovalMode {
