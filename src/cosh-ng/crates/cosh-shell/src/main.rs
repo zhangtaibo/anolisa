@@ -516,6 +516,11 @@ fn render_owned_shell_prompt<W: Write>(
         return Ok(());
     }
 
+    // TODO(native-mode): In wrapped-shell mode the child shell also emits its
+    // own PS1 prompt, so this "cosh-osc$ " line produces a visible double-prompt.
+    // Once native-mode lands (cosh *is* the shell) this owned prompt becomes the
+    // only one and the duplication disappears.  Until then, suppress or reconcile
+    // with the child shell's prompt output.
     write!(output, "cosh-osc$ ")?;
     output.flush()?;
     state.needs_prompt_after_agent_run = false;

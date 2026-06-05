@@ -13,6 +13,7 @@ mod raw_input;
 pub mod renderer;
 pub mod shell_host;
 pub mod tool_broker;
+pub mod tool_display;
 pub mod types;
 
 pub use exit_classify::*;
@@ -52,4 +53,5 @@ pub use shell_host::{
 pub use tool_broker::{
     can_run_approved_bash_tool, run_approved_bash_tool, ToolExecutionResult, ToolExecutionStatus,
 };
+pub use tool_display::*;
 pub use types::*;
