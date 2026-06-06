@@ -30,10 +30,33 @@ pub(super) fn render_startup_banner<W: Write>(
     let ai_line = if ai_disabled {
         "AI: disabled".to_string()
     } else {
-        format!("AI context may be sent to the {} backend.", adapter.name())
+        let backend_url = if adapter.name().contains("claude") {
+            " (api.anthropic.com)"
+        } else if adapter.name().contains("qwen") {
+            " (dashscope.aliyuncs.com)"
+        } else {
+            ""
+        };
+        format!(
+            "AI context may be sent to the {} backend{}.",
+            adapter.name(),
+            backend_url
+        )
     };
     write!(output, "\r\x1b[2K")?;
     let renderer = RatatuiInlineRenderer::for_terminal();
+
+    let logo = [
+        "\x1b[36m",
+        "    ╔═══╗  ╔═══╗  ╔═══╗  ╗  ╗",
+        "    ║      ║   ║  ╚═══╗  ╠══╣",
+        "    ╚═══╝  ╚═══╝  ═══╝╝  ╝  ╝",
+        "\x1b[0m",
+    ];
+    for line in &logo {
+        writeln!(output, "{line}")?;
+    }
+
     let mut body = vec![
         format!(
             "Adapter: {} \u{00b7} Shell: {shell_label} \u{00b7} Mode: {}",
@@ -53,7 +76,11 @@ pub(super) fn render_startup_banner<W: Write>(
     }
     renderer.write_banner(output, "cosh-shell", body, None)?;
     writeln!(output)?;
-    write!(output, "cosh-osc$ ")?;
+    if std::env::var("COSH_SHELL_ISOLATED").is_ok() {
+        write!(output, "cosh-osc$ ")?;
+    } else {
+        state.trigger_pty_prompt = true;
+    }
     output.flush()
 }
 

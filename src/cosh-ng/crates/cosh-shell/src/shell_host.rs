@@ -532,7 +532,13 @@ where
         &mut session.parser,
         &mut output,
         Duration::from_secs(5),
-        |parser| parser.prompt_count(config.prompt.as_bytes()) >= 1,
+        |parser| {
+            if config.native_mode {
+                parser.precmd_count() >= 1
+            } else {
+                parser.prompt_count(config.prompt.as_bytes()) >= 1
+            }
+        },
     )?;
 
     let input_master = session.master.try_clone()?;

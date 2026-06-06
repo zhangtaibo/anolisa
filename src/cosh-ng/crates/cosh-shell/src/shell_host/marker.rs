@@ -279,12 +279,14 @@ export COSH_POC_PS1="${COSH_POC_PS1:-cosh-osc$ }"
 # ── Source user startup files (native mode) ──
 if [[ -z "${COSH_SHELL_ISOLATED:-}" ]]; then
   if [[ -n "${COSH_ZDOTDIR_ORIG:-}" ]]; then
+    [[ -f "${COSH_ZDOTDIR_ORIG}/.zshenv" ]] && source "${COSH_ZDOTDIR_ORIG}/.zshenv"
     if [[ "${COSH_LOGIN_SHELL:-}" == "1" ]]; then
       [[ -f "${COSH_ZDOTDIR_ORIG}/.zprofile" ]] && source "${COSH_ZDOTDIR_ORIG}/.zprofile"
       [[ -f "${COSH_ZDOTDIR_ORIG}/.zlogin" ]] && source "${COSH_ZDOTDIR_ORIG}/.zlogin"
     fi
     [[ -f "${COSH_ZDOTDIR_ORIG}/.zshrc" ]] && source "${COSH_ZDOTDIR_ORIG}/.zshrc"
   else
+    [[ -f ~/.zshenv ]] && source ~/.zshenv
     if [[ "${COSH_LOGIN_SHELL:-}" == "1" ]]; then
       [[ -f ~/.zprofile ]] && source ~/.zprofile
       [[ -f ~/.zlogin ]] && source ~/.zlogin

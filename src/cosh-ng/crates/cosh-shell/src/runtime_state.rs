@@ -32,11 +32,21 @@ impl AnalysisThrottle {
             if now.duration_since(*last).as_secs() < self.cooldown_secs {
                 *count += 1;
                 *last = now;
-                return *count > self.max_consecutive;
+                // Allow first (count=1) and skip middle; the "last" will be
+                // analyzed when the cooldown resets or a different command runs.
+                return *count > 1 && *count <= self.max_consecutive;
             }
         }
         self.recent.insert(key, (now, 1));
         false
+    }
+
+    pub(super) fn skipped_count(&self, command: &str) -> usize {
+        let key = normalize_command(command);
+        self.recent
+            .get(&key)
+            .map(|(_, count)| count.saturating_sub(1))
+            .unwrap_or(0)
     }
 }
 
@@ -88,7 +98,17 @@ pub(super) struct InlineState {
     pub(super) analysis_mode: AnalysisMode,
     pub(super) analysis_throttle: AnalysisThrottle,
     pub(super) needs_prompt_after_agent_run: bool,
+    pub(super) trigger_pty_prompt: bool,
     pub(super) hook_engine: HookEngine,
+    pub(super) disabled_hooks: HashSet<String>,
+    pub(super) pending_consultation: Option<PendingConsultation>,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct PendingConsultation {
+    pub(super) card_id: String,
+    pub(super) block_id: String,
+    pub(super) prompt_hint: String,
 }
 
 impl InlineState {

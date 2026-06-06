@@ -99,7 +99,11 @@ impl HookEngine {
     }
 
     pub fn registered_hooks(&self) -> Vec<&str> {
-        self.builtin_hooks.iter().map(|h| h.id()).collect()
+        let mut ids: Vec<&str> = self.builtin_hooks.iter().map(|h| h.id()).collect();
+        for ext in &self.external_hooks {
+            ids.push(&ext.matcher.id);
+        }
+        ids
     }
 
     pub fn external_hooks(&self) -> &[ExternalHookConfig] {
@@ -118,6 +122,11 @@ fn matches_command(matcher: &HookMatcher, input: &HookInput) -> bool {
             return false;
         }
     }
+    if let Some(min_bytes) = matcher.min_output_bytes {
+        if input.output_bytes < min_bytes {
+            return false;
+        }
+    }
     let program = first_program_token(&input.command);
     if matcher.commands.iter().any(|cmd| cmd == program) {
         return true;
@@ -129,7 +138,14 @@ fn matches_command(matcher: &HookMatcher, input: &HookInput) -> bool {
     {
         return true;
     }
-    matcher.commands.is_empty() && matcher.command_patterns.is_empty()
+    if let Some(ref pattern) = matcher.command_regex {
+        if input.command.contains(pattern) {
+            return true;
+        }
+    }
+    matcher.commands.is_empty()
+        && matcher.command_patterns.is_empty()
+        && matcher.command_regex.is_none()
 }
 
 fn hook_input_from_block(block: &CommandBlock) -> HookInput {
@@ -191,6 +207,7 @@ fn parse_hook_header(path: &Path) -> Option<ExternalHookConfig> {
             id,
             commands: match_commands,
             command_patterns: Vec::new(),
+                command_regex: None, min_output_bytes: None,
             exit_codes: None,
             trigger,
         },
@@ -229,7 +246,8 @@ fn run_external_hook(config: &ExternalHookConfig, input: &HookInput) -> Option<H
         // drop stdin so the child sees EOF
     }
 
-    let timeout = Duration::from_millis(config.timeout_ms);
+    let clamped_ms = config.timeout_ms.min(10_000);
+    let timeout = Duration::from_millis(clamped_ms);
     match child.wait_timeout(timeout) {
         Ok(Some(status)) if status.success() => {}
         Ok(Some(_)) => {
@@ -257,12 +275,25 @@ fn run_external_hook(config: &ExternalHookConfig, input: &HookInput) -> Option<H
         }
     }
 
-    // Process has exited successfully; read stdout
-    let mut stdout_buf = Vec::new();
+    // Process has exited successfully; read stdout (8KB limit)
+    const MAX_HOOK_OUTPUT: usize = 8192;
+    let mut stdout_buf = vec![0u8; MAX_HOOK_OUTPUT];
+    let mut total_read = 0;
     if let Some(mut stdout) = child.stdout.take() {
         use std::io::Read;
-        let _ = stdout.read_to_end(&mut stdout_buf);
+        loop {
+            let remaining = MAX_HOOK_OUTPUT - total_read;
+            if remaining == 0 {
+                break;
+            }
+            match stdout.read(&mut stdout_buf[total_read..]) {
+                Ok(0) => break,
+                Ok(n) => total_read += n,
+                Err(_) => break,
+            }
+        }
     }
+    stdout_buf.truncate(total_read);
     let stdout = String::from_utf8_lossy(&stdout_buf);
     if stdout.trim().is_empty() {
         return None;
@@ -302,6 +333,7 @@ mod tests {
             id: "test".to_string(),
             commands: commands.into_iter().map(String::from).collect(),
             command_patterns: patterns.into_iter().map(String::from).collect(),
+                command_regex: None, min_output_bytes: None,
             exit_codes: None,
             trigger,
         }
@@ -369,7 +401,7 @@ mod tests {
                 description: "desc".to_string(),
                 suggestion: "fix it".to_string(),
                 skill: None,
-                cli_hint: None,
+                cli_hint: None, context_refs: Vec::new(),
             })
         }
     }
@@ -538,6 +570,7 @@ mod tests {
                 id: "info-hook".to_string(),
                 commands: vec![],
                 command_patterns: vec![],
+                command_regex: None, min_output_bytes: None,
                 exit_codes: None,
                 trigger: HookTrigger::OnComplete,
             },
@@ -548,6 +581,7 @@ mod tests {
                 id: "critical-hook".to_string(),
                 commands: vec![],
                 command_patterns: vec![],
+                command_regex: None, min_output_bytes: None,
                 exit_codes: None,
                 trigger: HookTrigger::OnComplete,
             },
@@ -558,6 +592,7 @@ mod tests {
                 id: "warning-hook".to_string(),
                 commands: vec![],
                 command_patterns: vec![],
+                command_regex: None, min_output_bytes: None,
                 exit_codes: None,
                 trigger: HookTrigger::OnComplete,
             },

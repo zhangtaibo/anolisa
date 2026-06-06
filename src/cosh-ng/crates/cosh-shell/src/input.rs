@@ -4,6 +4,13 @@ pub struct InputClassifier {
     conservative: bool,
 }
 
+impl InputClassifier {
+    pub fn with_conservative(mut self, conservative: bool) -> Self {
+        self.conservative = conservative;
+        self
+    }
+}
+
 impl Default for InputClassifier {
     fn default() -> Self {
         Self {
@@ -37,6 +44,10 @@ impl InputClassifier {
             conservative: true,
             ..Self::default()
         }
+    }
+
+    pub fn is_conservative(&self) -> bool {
+        self.conservative
     }
 
     pub fn classify(&self, input: &str) -> InputDecision {
