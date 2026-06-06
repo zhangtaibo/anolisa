@@ -336,11 +336,72 @@ fn relay_passthrough_input(
 fn relay_native_passthrough(
     bytes: &[u8],
     master: &mut File,
-    _input_classifier: &InputClassifier,
+    input_classifier: &InputClassifier,
     input_events: &Sender<RawInputEvent>,
-    _input_mode: &Arc<Mutex<RawInputMode>>,
-    _line_buffer: &mut CandidateLineBuffer,
+    input_mode: &Arc<Mutex<RawInputMode>>,
+    line_buffer: &mut CandidateLineBuffer,
 ) -> io::Result<bool> {
+    if line_buffer.is_active() || starts_intercept_candidate(bytes) {
+        line_buffer.push(bytes);
+
+        let has_newline = line_buffer.bytes.iter().any(|b| matches!(b, b'\n' | b'\r'));
+        if !has_newline {
+            // Forward to PTY for readline echo, but buffer for intercept check on Enter.
+            master.write_all(bytes)?;
+            master.flush()?;
+            return Ok(true);
+        }
+
+        // Enter pressed: check if we should intercept.
+        match candidate_line_status(&line_buffer.bytes) {
+            CandidateLineStatus::Complete { line, line_len } => {
+                match input_classifier.classify(&line) {
+                    InputDecision::Intercept { input, reason } => {
+                        // Clear the line from shell readline (Ctrl-U + Ctrl-C to cancel).
+                        master.write_all(b"\x15\x03")?;
+                        master.flush()?;
+                        let _ = input_events.send(RawInputEvent::CandidateCommit(
+                            line.as_bytes().to_vec(),
+                        ));
+                        if let Ok(mut mode) = input_mode.lock() {
+                            *mode = RawInputMode::Delay;
+                        }
+                        let _ = input_events.send(RawInputEvent::UserIntercept(input, reason));
+                        let remainder = line_buffer.take().split_off(line_len);
+                        if !remainder.is_empty() {
+                            relay_native_passthrough(
+                                &remainder, master, input_classifier,
+                                input_events, input_mode, line_buffer,
+                            )?;
+                        }
+                        return Ok(true);
+                    }
+                    InputDecision::SendToShell(_) => {
+                        // Not intercepted — send the Enter to shell.
+                        let enter_bytes: Vec<u8> = line_buffer.bytes.iter()
+                            .filter(|b| matches!(b, b'\n' | b'\r'))
+                            .copied()
+                            .collect();
+                        line_buffer.clear();
+                        master.write_all(&enter_bytes)?;
+                        master.flush()?;
+                        return Ok(false);
+                    }
+                }
+            }
+            CandidateLineStatus::Unsafe => {
+                let all = line_buffer.take();
+                master.write_all(&all[all.len() - bytes.len()..])?;
+                master.flush()?;
+                return Ok(false);
+            }
+            CandidateLineStatus::Pending => {
+                master.write_all(bytes)?;
+                master.flush()?;
+                return Ok(true);
+            }
+        }
+    }
     send_raw_input_events(bytes, input_events);
     master.write_all(bytes)?;
     master.flush()?;
