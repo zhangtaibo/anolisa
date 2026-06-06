@@ -341,67 +341,19 @@ fn relay_native_passthrough(
     input_mode: &Arc<Mutex<RawInputMode>>,
     line_buffer: &mut CandidateLineBuffer,
 ) -> io::Result<bool> {
-    if line_buffer.is_active() || starts_intercept_candidate(bytes) {
+    let starts_slash = bytes.first() == Some(&b'/') || bytes.starts_with(b"??");
+    if line_buffer.is_active() || starts_slash {
         line_buffer.push(bytes);
-
-        let has_newline = line_buffer.bytes.iter().any(|b| matches!(b, b'\n' | b'\r'));
-        if !has_newline {
-            // Forward to PTY for readline echo, but buffer for intercept check on Enter.
-            master.write_all(bytes)?;
-            master.flush()?;
-            return Ok(true);
-        }
-
-        // Enter pressed: check if we should intercept.
-        match candidate_line_status(&line_buffer.bytes) {
-            CandidateLineStatus::Complete { line, line_len } => {
-                match input_classifier.classify(&line) {
-                    InputDecision::Intercept { input, reason } => {
-                        // Clear the line from shell readline (Ctrl-U + Ctrl-C to cancel).
-                        master.write_all(b"\x15\x03")?;
-                        master.flush()?;
-                        let _ = input_events.send(RawInputEvent::CandidateCommit(
-                            line.as_bytes().to_vec(),
-                        ));
-                        if let Ok(mut mode) = input_mode.lock() {
-                            *mode = RawInputMode::Delay;
-                        }
-                        let _ = input_events.send(RawInputEvent::UserIntercept(input, reason));
-                        let remainder = line_buffer.take().split_off(line_len);
-                        if !remainder.is_empty() {
-                            relay_native_passthrough(
-                                &remainder, master, input_classifier,
-                                input_events, input_mode, line_buffer,
-                            )?;
-                        }
-                        return Ok(true);
-                    }
-                    InputDecision::SendToShell(_) => {
-                        // Not intercepted — send the Enter to shell.
-                        let enter_bytes: Vec<u8> = line_buffer.bytes.iter()
-                            .filter(|b| matches!(b, b'\n' | b'\r'))
-                            .copied()
-                            .collect();
-                        line_buffer.clear();
-                        master.write_all(&enter_bytes)?;
-                        master.flush()?;
-                        return Ok(false);
-                    }
-                }
-            }
-            CandidateLineStatus::Unsafe => {
-                let all = line_buffer.take();
-                master.write_all(&all[all.len() - bytes.len()..])?;
-                master.flush()?;
-                return Ok(false);
-            }
-            CandidateLineStatus::Pending => {
-                master.write_all(bytes)?;
-                master.flush()?;
-                return Ok(true);
-            }
-        }
+        return relay_candidate_line(
+            master,
+            input_classifier,
+            input_events,
+            input_mode,
+            line_buffer,
+        );
     }
+    // Non-slash input: send directly to PTY. Shell marker's preexec/
+    // command_not_found hooks handle NL/CJK intercept on the shell side.
     send_raw_input_events(bytes, input_events);
     master.write_all(bytes)?;
     master.flush()?;

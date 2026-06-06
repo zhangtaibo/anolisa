@@ -458,6 +458,17 @@ command_not_found_handler() {
 
 _cosh_preexec_marker() {
   local command="$1"
+  local first_word="$command"
+  local argc=1
+  if [[ "$command" == *[[:space:]]* ]]; then
+    first_word="${command%%[[:space:]]*}"
+    argc=2
+  fi
+  local reason
+  if reason="$(_cosh_should_intercept_unknown "$first_word" "$command" "$argc")"; then
+    _cosh_emit_intercept_marker "$command" "$reason"
+    return 1
+  fi
   _cosh_emit_marker "preexec" "$command" 0
 }
 
