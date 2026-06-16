@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -28,13 +28,17 @@ pub struct AiConfig {
     pub providers: HashMap<String, ProviderConfig>,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct ProviderConfig {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub provider_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub base_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub extra_params: Option<Value>,
 }
 
@@ -243,6 +247,57 @@ pub struct ResolvedProvider {
     pub model: String,
     pub provider_type: String,
     pub extra_params: Option<Value>,
+}
+
+/// Persist the current provider config to `~/.copilot-shell/config.toml`.
+/// Only writes the [ai] section to avoid overwriting other settings.
+pub fn persist_config(config: &CoreConfig) -> Result<(), String> {
+    let dir = config_dir();
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("Failed to create config dir: {e}"))?;
+
+    let config_path = dir.join("config.toml");
+
+    // Build a minimal TOML representation of the AI section
+    let mut content = String::new();
+    content.push_str("[ai]\n");
+    if let Some(ref active) = config.ai.active_provider {
+        content.push_str(&format!("active_provider = \"{}\"\n", active));
+    }
+    if let Some(ref model) = config.ai.active_model {
+        content.push_str(&format!("active_model = \"{}\"\n", model));
+    }
+    content.push('\n');
+
+    for (name, provider) in &config.ai.providers {
+        content.push_str(&format!("[ai.providers.{}]\n", name));
+        if let Some(ref t) = provider.provider_type {
+            content.push_str(&format!("type = \"{}\"\n", t));
+        }
+        if let Some(ref url) = provider.base_url {
+            content.push_str(&format!("base_url = \"{}\"\n", url));
+        }
+        if let Some(ref key) = provider.api_key {
+            content.push_str(&format!("api_key = \"{}\"\n", key));
+        }
+        if let Some(ref m) = provider.model {
+            content.push_str(&format!("model = \"{}\"\n", m));
+        }
+        content.push('\n');
+    }
+
+    std::fs::write(&config_path, &content)
+        .map_err(|e| format!("Failed to write config: {e}"))?;
+
+    // Set file permissions to 0600 on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o600);
+        let _ = std::fs::set_permissions(&config_path, perms);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
