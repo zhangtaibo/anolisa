@@ -283,6 +283,12 @@ pub fn persist_config(config: &CoreConfig) -> Result<(), String> {
     if let Some(ref model) = config.ai.active_model {
         preserved.push_str(&format!("active_model = \"{}\"\n", escape_toml_value(model)));
     }
+    if let Some(ref lang) = config.ai.output_language {
+        preserved.push_str(&format!("output_language = \"{}\"\n", escape_toml_value(lang)));
+    }
+    if let Some(ref thinking) = config.ai.thinking {
+        preserved.push_str(&format!("thinking = \"{}\"\n", escape_toml_value(thinking)));
+    }
     preserved.push('\n');
 
     for (name, provider) in &config.ai.providers {
