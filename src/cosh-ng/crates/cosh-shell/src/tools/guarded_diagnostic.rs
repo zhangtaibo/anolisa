@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use super::{is_sensitive_target, strip_ansi};
+
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(3);
 const DEFAULT_OUTPUT_LIMIT_BYTES: usize = 64 * 1024;
 
@@ -173,39 +175,10 @@ fn read_limited_clean(path: &Path, limit: usize) -> Result<String, GuardedDiagno
     Ok(strip_ansi(&text))
 }
 
-fn strip_ansi(input: &str) -> String {
-    let mut out = String::new();
-    let mut chars = input.chars().peekable();
-    while let Some(ch) = chars.next() {
-        if ch == '\x1b' && chars.peek().is_some_and(|next| *next == '[') {
-            chars.next();
-            for next in chars.by_ref() {
-                if next.is_ascii_alphabetic() {
-                    break;
-                }
-            }
-        } else {
-            out.push(ch);
-        }
-    }
-    out
-}
-
 fn cleanup_paths(paths: &[PathBuf]) {
     for path in paths {
         let _ = std::fs::remove_file(path);
     }
-}
-
-fn is_sensitive_target(token: &str) -> bool {
-    let lower = token.to_ascii_lowercase();
-    lower.contains(".ssh/")
-        || lower.contains(".aws/credentials")
-        || lower.contains(".kube/config")
-        || lower.ends_with(".pem")
-        || lower.ends_with(".key")
-        || lower == ".env"
-        || lower == "/etc/shadow"
 }
 
 fn error(reason: &'static str, detail: impl Into<String>) -> GuardedDiagnosticError {
@@ -233,6 +206,8 @@ mod tests {
             "ps aux | head",
             "rm -rf /tmp/nope",
             "cat .env",
+            "df .env.local",
+            "df ~/.npmrc",
             "/bin/ps aux",
         ] {
             assert!(

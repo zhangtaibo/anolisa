@@ -1,5 +1,6 @@
 use super::broker::can_run_approved_bash_tool;
 use super::guarded_diagnostic::validate_guarded_diagnostic;
+use super::is_sensitive_target;
 use super::readonly_pipeline::validate_readonly_pipeline;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1191,32 +1192,6 @@ fn looks_like_diagnostic_pipeline(command: &str) -> bool {
     let lower = command.to_ascii_lowercase();
     (lower.contains("ps ") || lower.starts_with("ps") || lower.contains("df "))
         && (lower.contains("| head") || lower.contains("| grep") || lower.contains("| sort"))
-}
-
-fn is_sensitive_target(token: &str) -> bool {
-    let token = token.trim_matches(|ch| ch == '"' || ch == '\'');
-    let lower = token.to_ascii_lowercase();
-    let basename = lower.rsplit('/').next().unwrap_or(lower.as_str());
-    basename == ".env"
-        || basename.starts_with(".env.")
-        || basename == "id_rsa"
-        || basename == "id_ed25519"
-        || basename.ends_with(".pem")
-        || basename.ends_with(".key")
-        || basename.ends_with(".p12")
-        || lower.contains(".ssh/")
-        || lower.contains(".aws/credentials")
-        || lower.contains(".config/gcloud")
-        || lower.contains(".azure")
-        || lower.contains(".kube/config")
-        || lower.contains(".npmrc")
-        || lower.contains(".pypirc")
-        || lower.contains(".netrc")
-        || lower == "/etc/shadow"
-        || lower == "/etc/sudoers"
-        || basename == ".zsh_history"
-        || basename == ".bash_history"
-        || basename == ".fish_history"
 }
 
 fn is_secret_search_token(token: &str) -> bool {
