@@ -12,9 +12,6 @@ use crate::protocol::{
 /// Timeout for waiting for auth response from Shell.
 pub const AUTH_TIMEOUT: Duration = Duration::from_secs(300);
 
-/// Maximum number of auth retries before giving up.
-pub const MAX_AUTH_RETRIES: u32 = 3;
-
 /// Returns the builtin provider templates for the auth UI.
 pub fn builtin_auth_providers() -> Vec<AuthProvider> {
     vec![
