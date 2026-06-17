@@ -133,6 +133,37 @@ impl HookSystem {
         }
     }
 
+    /// Dynamically append hook definitions from extensions.
+    /// Extension hooks are appended to the end of each event's hook list.
+    /// Whether hooks actually fire is still governed by the global `enabled`
+    /// flag (from `hooks.enabled` in config). This method only registers
+    /// definitions; it does NOT override the global kill switch.
+    pub fn register_extension_hooks(&mut self, hooks: &crate::extension::ExtensionHooks) {
+        if hooks.is_empty() {
+            return;
+        }
+        self.hooks
+            .entry(HookEventName::PreToolUse)
+            .or_default()
+            .extend(hooks.pre_tool_use.clone());
+        self.hooks
+            .entry(HookEventName::PostToolUse)
+            .or_default()
+            .extend(hooks.post_tool_use.clone());
+        self.hooks
+            .entry(HookEventName::UserPromptSubmit)
+            .or_default()
+            .extend(hooks.user_prompt_submit.clone());
+        self.hooks
+            .entry(HookEventName::SessionStart)
+            .or_default()
+            .extend(hooks.session_start.clone());
+        self.hooks
+            .entry(HookEventName::Stop)
+            .or_default()
+            .extend(hooks.stop.clone());
+    }
+
     fn active_hooks(&self, event: HookEventName) -> Vec<&HookDefinition> {
         self.hooks
             .get(&event)
