@@ -133,14 +133,16 @@ language = "fr-FR"
 fn parse_simple_key_value() {
     let content = r#"
 shell.default = "zsh"
-analysis.mode = conservative
-adapter.default = "qwen"
+shell.analysis_mode = conservative
+shell.approval_mode = recommend
+shell.adapter_default = "qwen"
 ui.language = zh-CN
 "#;
     let mut cfg = CoshConfig::default();
     parse_simple_config(content, &mut cfg);
     assert_eq!(cfg.shell_default, "zsh");
     assert_eq!(cfg.analysis_mode, "conservative");
+    assert_eq!(cfg.approval_mode, "recommend");
     assert_eq!(cfg.adapter_default, "qwen");
     assert_eq!(cfg.language, "zh-CN");
 }
@@ -184,8 +186,8 @@ debug = true
 #[test]
 fn parse_toml_adapter_default() {
     let content = r#"
-[adapter]
-default = "qwen"
+[shell]
+adapter_default = "qwen"
 "#;
     let mut cfg = CoshConfig::default();
     parse_toml_config(content, &mut cfg);
@@ -217,8 +219,8 @@ fn write_language_config_updates_toml_and_preserves_unrelated_values() {
     std::fs::write(
         &path,
         r#"
-[adapter]
-default = "qwen"
+[shell]
+adapter_default = "qwen"
 
 [ui]
 startup_banner = false
@@ -230,8 +232,8 @@ language = "auto"
     write_language_config_to_path(&path, "en").expect("update language");
 
     let content = std::fs::read_to_string(&path).expect("read config");
-    assert!(content.contains("[adapter]"), "{content}");
-    assert!(content.contains("default = \"qwen\""), "{content}");
+    assert!(content.contains("[shell]"), "{content}");
+    assert!(content.contains("adapter_default = \"qwen\""), "{content}");
     assert!(content.contains("startup_banner = false"), "{content}");
     assert!(content.contains("language = \"en-US\""), "{content}");
     let mut cfg = CoshConfig::default();
@@ -285,9 +287,9 @@ fn parse_unknown_keys_ignored() {
 #[test]
 fn parse_trusted_commands_accumulates() {
     let content = r#"
-approval.trusted_command = "npm test"
-approval.trusted_command = "make"
-approval.trusted_command = "cargo build"
+shell.trusted_command = "npm test"
+shell.trusted_command = "make"
+shell.trusted_command = "cargo build"
 "#;
     let mut cfg = CoshConfig::default();
     parse_simple_config(content, &mut cfg);
@@ -299,7 +301,7 @@ approval.trusted_command = "cargo build"
 
 #[test]
 fn parse_trusted_command_ignores_empty() {
-    let content = "approval.trusted_command = \"\"\napproval.trusted_command = \"git status\"\n";
+    let content = "shell.trusted_command = \"\"\nshell.trusted_command = \"git status\"\n";
     let mut cfg = CoshConfig::default();
     parse_simple_config(content, &mut cfg);
     assert_eq!(cfg.trusted_commands.len(), 1);
@@ -309,9 +311,9 @@ fn parse_trusted_command_ignores_empty() {
 #[test]
 fn parse_trusted_project_roots_accumulates() {
     let content = r#"
-hooks.trusted_project_root = "/work/app"
-hooks.trusted_project_root = "/work/lib"
-hooks.trusted_project_root = ""
+shell.trusted_project_root = "/work/app"
+shell.trusted_project_root = "/work/lib"
+shell.trusted_project_root = ""
 "#;
     let mut cfg = CoshConfig::default();
     parse_simple_config(content, &mut cfg);
@@ -323,7 +325,7 @@ hooks.trusted_project_root = ""
 #[test]
 fn parse_toml_trusted_project_roots() {
     let content = r#"
-[hooks]
+[shell]
 trusted_project_roots = ["/work/app", "/work/lib"]
 "#;
     let mut cfg = CoshConfig::default();
@@ -484,9 +486,10 @@ fn clear_hook_feedback_store_path_keeps_empty_store_file() {
 #[test]
 fn parse_toml_readonly_dsl_adds_generic_override_and_disabled_rules() {
     let content = r#"
-approval.readonly_disabled = ["git branch", "docker inspect"]
+[shell]
+readonly_disabled = ["git branch", "docker inspect"]
 
-[approval.readonly.mytool]
+[shell.readonly.mytool]
 type = "generic"
 short_flags = "v"
 long_flags = ["--verbose"]
@@ -512,11 +515,11 @@ bare_number_max = 5
 #[test]
 fn parse_toml_readonly_dsl_adds_subcommand_override() {
     let content = r#"
-[approval.readonly.safegit]
+[shell.readonly.safegit]
 type = "subcommand"
 deny_args = ["-c"]
 
-[approval.readonly.safegit.subcommands.status]
+[shell.readonly.safegit.subcommands.status]
 type = "generic"
 long_flags = ["--short"]
 path_mode = "none"
@@ -531,7 +534,7 @@ path_mode = "none"
 #[test]
 fn parse_toml_readonly_dsl_records_invalid_rules_fail_closed() {
     let content = r#"
-[approval.readonly.bad]
+[shell.readonly.bad]
 type = "generic"
 path_mode = "somewhere"
 "#;
@@ -545,9 +548,10 @@ path_mode = "somewhere"
 #[test]
 fn parse_toml_readonly_dsl_records_parse_error_fail_closed() {
     let content = r#"
-approval.readonly_disabled = [
+[shell]
+readonly_disabled = [
 
-[approval.readonly.bad]
+[shell.readonly.bad]
 type = "bare"
 "#;
     let mut cfg = CoshConfig::default();
