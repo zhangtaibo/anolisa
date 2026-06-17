@@ -173,6 +173,17 @@ impl HookSystem {
             .entry(HookEventName::Stop)
             .or_default()
             .extend(flatten_hook_groups(&hooks.stop));
+
+        let unsupported: &[(&str, &[_])] = &[
+            ("PostToolUseFailure", &hooks.post_tool_use_failure),
+            ("BeforeModel", &hooks.before_model),
+            ("AfterModel", &hooks.after_model),
+        ];
+        for (name, groups) in unsupported {
+            if !groups.is_empty() {
+                eprintln!("[cosh-tui] Warning: extension hook event '{name}' is not yet supported and will be ignored");
+            }
+        }
     }
 
     fn active_hooks(&self, event: HookEventName) -> Vec<&HookDefinition> {

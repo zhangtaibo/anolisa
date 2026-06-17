@@ -284,17 +284,20 @@ fn expand_env_vars(s: &str) -> String {
     let mut result = s.to_string();
 
     // ${VAR}
-    while let Some(start) = result.find("${") {
+    let mut search_from = 0;
+    while let Some(pos) = result[search_from..].find("${") {
+        let start = search_from + pos;
         if let Some(end) = result[start..].find('}') {
             let var_name = &result[start + 2..start + end];
-            let replacement = std::env::var(var_name)
-                .unwrap_or_else(|_| format!("${{{}}}", var_name));
-            result = format!(
-                "{}{}{}",
-                &result[..start],
-                replacement,
-                &result[start + end + 1..]
-            );
+            match std::env::var(var_name) {
+                Ok(val) => {
+                    result = format!("{}{}{}", &result[..start], val, &result[start + end + 1..]);
+                    search_from = start + val.len();
+                }
+                Err(_) => {
+                    search_from = start + end + 1;
+                }
+            }
         } else {
             break;
         }
