@@ -351,6 +351,12 @@ pub(crate) fn write_cosh_config(home: &Path, content: &str) {
     fs::write(config_dir.join("config.toml"), content).unwrap();
 }
 
+pub(crate) fn write_legacy_cosh_config(home: &Path, content: &str) {
+    let config_dir = home.join(".config/cosh");
+    fs::create_dir_all(&config_dir).unwrap();
+    fs::write(config_dir.join("config.toml"), content).unwrap();
+}
+
 pub(crate) fn write_executable(path: &Path, content: &str) {
     fs::write(path, content).unwrap();
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();

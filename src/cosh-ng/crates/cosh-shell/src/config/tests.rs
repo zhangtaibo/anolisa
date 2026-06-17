@@ -5,7 +5,7 @@ use super::hook_feedback::{
     write_hook_feedback_to_store_path,
 };
 use super::language::{language_setting_from_config_content, write_language_config_to_path};
-use super::load::load_config_file_into;
+use super::load::{config_read_file_path_for_home, load_config_file_into};
 use super::parse::{parse_simple_config, parse_toml_config};
 use super::trust::{
     add_trusted_project_root_to_store_path, load_project_trust_store,
@@ -27,6 +27,17 @@ fn temp_config_path(label: &str) -> PathBuf {
         .join(".copilot-shell/config.toml")
 }
 
+fn temp_home_path(label: &str) -> PathBuf {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("clock")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "cosh-shell-home-{label}-{}-{nanos}",
+        std::process::id()
+    ))
+}
+
 #[test]
 fn default_config_values() {
     let cfg = CoshConfig::default();
@@ -42,6 +53,33 @@ fn default_config_values() {
     assert!(cfg.trusted_project_roots.is_empty());
     assert!(cfg.readonly.disabled.is_empty());
     assert!(cfg.readonly.overrides.is_empty());
+}
+
+#[test]
+fn config_read_path_prefers_shared_copilot_shell_config() {
+    let home = temp_home_path("shared-config-wins");
+    let shared = home.join(".copilot-shell/config.toml");
+    let legacy = home.join(".config/cosh/config.toml");
+    std::fs::create_dir_all(shared.parent().unwrap()).expect("shared dir");
+    std::fs::create_dir_all(legacy.parent().unwrap()).expect("legacy dir");
+    std::fs::write(&shared, "[ui]\nlanguage = \"en-US\"\n").expect("shared config");
+    std::fs::write(&legacy, "[ui]\nlanguage = \"zh-CN\"\n").expect("legacy config");
+
+    assert_eq!(config_read_file_path_for_home(&home), shared);
+
+    let _ = std::fs::remove_dir_all(&home);
+}
+
+#[test]
+fn config_read_path_falls_back_to_legacy_cosh_config() {
+    let home = temp_home_path("legacy-config-fallback");
+    let legacy = home.join(".config/cosh/config.toml");
+    std::fs::create_dir_all(legacy.parent().unwrap()).expect("legacy dir");
+    std::fs::write(&legacy, "[ui]\nlanguage = \"zh-CN\"\n").expect("legacy config");
+
+    assert_eq!(config_read_file_path_for_home(&home), legacy);
+
+    let _ = std::fs::remove_dir_all(&home);
 }
 
 #[test]
