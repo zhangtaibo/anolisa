@@ -135,33 +135,44 @@ impl HookSystem {
 
     /// Dynamically append hook definitions from extensions.
     /// Extension hooks are appended to the end of each event's hook list.
-    /// Whether hooks actually fire is still governed by the global `enabled`
-    /// flag (from `hooks.enabled` in config). This method only registers
-    /// definitions; it does NOT override the global kill switch.
+    ///
+    /// If extensions provide non-empty hooks, the hook system is automatically
+    /// enabled (extensions are explicitly installed by the user, implying intent
+    /// to use their hooks). The user can still force-disable via config if needed.
+    ///
+    /// The extension format uses nested `HookGroup` structures (matching
+    /// copilot-shell's format). Groups are flattened into individual
+    /// `HookDefinition` entries with group-level matcher/sequential inherited.
     pub fn register_extension_hooks(&mut self, hooks: &crate::extension::ExtensionHooks) {
+        use crate::extension::config::flatten_hook_groups;
+
         if hooks.is_empty() {
             return;
         }
+
+        // Auto-enable: extensions are user-installed, so their hooks should fire.
+        self.enabled = true;
+
         self.hooks
             .entry(HookEventName::PreToolUse)
             .or_default()
-            .extend(hooks.pre_tool_use.clone());
+            .extend(flatten_hook_groups(&hooks.pre_tool_use));
         self.hooks
             .entry(HookEventName::PostToolUse)
             .or_default()
-            .extend(hooks.post_tool_use.clone());
+            .extend(flatten_hook_groups(&hooks.post_tool_use));
         self.hooks
             .entry(HookEventName::UserPromptSubmit)
             .or_default()
-            .extend(hooks.user_prompt_submit.clone());
+            .extend(flatten_hook_groups(&hooks.user_prompt_submit));
         self.hooks
             .entry(HookEventName::SessionStart)
             .or_default()
-            .extend(hooks.session_start.clone());
+            .extend(flatten_hook_groups(&hooks.session_start));
         self.hooks
             .entry(HookEventName::Stop)
             .or_default()
-            .extend(hooks.stop.clone());
+            .extend(flatten_hook_groups(&hooks.stop));
     }
 
     fn active_hooks(&self, event: HookEventName) -> Vec<&HookDefinition> {
