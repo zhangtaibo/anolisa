@@ -89,7 +89,7 @@ fn raw_cli_config_language_direct_set_saves_after_confirmation() {
         ],
     );
 
-    let config_path = home.join(".config/cosh/config.toml");
+    let config_path = home.join(".copilot-shell/config.toml");
     let content = fs::read_to_string(&config_path).expect("read saved config");
     assert!(content.contains("[ui]"), "{content}");
     assert!(content.contains("language = \"zh-CN\""), "{content}");
@@ -120,7 +120,7 @@ fn raw_cli_config_language_selector_saves_after_confirmation() {
         ],
     );
 
-    let config_path = home.join(".config/cosh/config.toml");
+    let config_path = home.join(".copilot-shell/config.toml");
     let content = fs::read_to_string(&config_path).expect("read saved config");
     assert!(content.contains("language = \"zh-CN\""), "{content}");
     assert!(output.contains("Language"), "{output}");
@@ -151,7 +151,7 @@ fn raw_cli_config_language_selector_cancel_does_not_write_file() {
         ],
     );
 
-    assert!(!home.join(".config/cosh/config.toml").exists());
+    assert!(!home.join(".copilot-shell/config.toml").exists());
     assert!(output.contains("Language"), "{output}");
     assert!(output.contains("Config unchanged"), "{output}");
     assert!(output.contains("No config file was changed."), "{output}");
@@ -176,7 +176,7 @@ language = "zh-CN"
         &[("HOME", &home_str), ("COSH_SHELL_LANG", "en-US")],
     );
 
-    let config_path = home.join(".config/cosh/config.toml");
+    let config_path = home.join(".copilot-shell/config.toml");
     let content = fs::read_to_string(&config_path).expect("read saved config");
     assert!(content.contains("language = \"zh-CN\""), "{content}");
     assert!(output.contains("language: en-US source: env"), "{output}");

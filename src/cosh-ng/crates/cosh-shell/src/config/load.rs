@@ -27,7 +27,7 @@ pub(super) fn load_config_file_into(path: &Path, config: &mut CoshConfig) {
 }
 
 pub(super) fn config_file_path() -> Option<PathBuf> {
-    dirs_next_or_home().map(|d| d.join(".config/cosh/config.toml"))
+    dirs_next_or_home().map(|d| d.join(".copilot-shell/config.toml"))
 }
 
 pub(super) fn dirs_next_or_home() -> Option<PathBuf> {

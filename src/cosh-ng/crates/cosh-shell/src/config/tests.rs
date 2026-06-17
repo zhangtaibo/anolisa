@@ -24,7 +24,7 @@ fn temp_config_path(label: &str) -> PathBuf {
             "cosh-shell-config-{label}-{}-{nanos}",
             std::process::id()
         ))
-        .join(".config/cosh/config.toml")
+        .join(".copilot-shell/config.toml")
 }
 
 #[test]
