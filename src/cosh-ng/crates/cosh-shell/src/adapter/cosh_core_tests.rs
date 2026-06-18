@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use super::cosh_tui::CoshTuiAdapter;
+use super::cosh_core::CoshCoreAdapter;
 use super::AgentAdapter;
 use crate::types::{
     AgentEvent, AgentMode, AgentRequest, CommandBlock, CommandStatus, CoshApprovalMode, OutputRefs,
@@ -38,9 +38,9 @@ fn test_request() -> AgentRequest {
     }
 }
 
-fn test_adapter() -> CoshTuiAdapter {
-    CoshTuiAdapter {
-        program: "cosh-tui".to_string(),
+fn test_adapter() -> CoshCoreAdapter {
+    CoshCoreAdapter {
+        program: "cosh-core".to_string(),
         allow_model_call: false,
         session_id: Arc::new(Mutex::new(None)),
         session_cwd: Arc::new(Mutex::new(None)),
@@ -50,7 +50,7 @@ fn test_adapter() -> CoshTuiAdapter {
 #[test]
 fn prepare_invocation_headless_flag() {
     let inv = test_adapter().prepare_invocation(&test_request(), CoshApprovalMode::Auto);
-    assert_eq!(inv.program, "cosh-tui");
+    assert_eq!(inv.program, "cosh-core");
     assert!(inv.args.contains(&"--headless".to_string()));
 }
 
@@ -67,7 +67,7 @@ fn prepare_invocation_approval_modes() {
 }
 
 #[test]
-fn prepare_invocation_prompt_leaves_shell_tool_trigger_to_cosh_tui() {
+fn prepare_invocation_prompt_leaves_shell_tool_trigger_to_cosh_core() {
     let inv = test_adapter().prepare_invocation(&test_request(), CoshApprovalMode::Auto);
 
     assert!(inv
@@ -77,13 +77,13 @@ fn prepare_invocation_prompt_leaves_shell_tool_trigger_to_cosh_tui() {
     assert!(!inv
         .prompt
         .contains("Always emit a provider permission request"));
-    assert!(!inv.prompt.contains("cosh-tui adapter compatibility"));
+    assert!(!inv.prompt.contains("cosh-core adapter compatibility"));
 }
 
 #[test]
 fn prepare_invocation_session_resume() {
-    let adapter = CoshTuiAdapter {
-        program: "cosh-tui".to_string(),
+    let adapter = CoshCoreAdapter {
+        program: "cosh-core".to_string(),
         allow_model_call: false,
         session_id: Arc::new(Mutex::new(Some("prev-sess".to_string()))),
         session_cwd: Arc::new(Mutex::new(Some("/tmp".to_string()))),
@@ -95,8 +95,8 @@ fn prepare_invocation_session_resume() {
 
 #[test]
 fn prepare_invocation_does_not_resume_across_cwd_scope() {
-    let adapter = CoshTuiAdapter {
-        program: "cosh-tui".to_string(),
+    let adapter = CoshCoreAdapter {
+        program: "cosh-core".to_string(),
         allow_model_call: false,
         session_id: Arc::new(Mutex::new(Some("prev-sess".to_string()))),
         session_cwd: Arc::new(Mutex::new(Some("/other".to_string()))),
@@ -137,7 +137,7 @@ printf '%s\n' '{"type":"result","subtype":"success","session_id":"s","is_error":
     permissions.set_mode(0o755);
     std::fs::set_permissions(&script, permissions).expect("chmod mock cosh-tui");
 
-    let adapter = CoshTuiAdapter {
+    let adapter = CoshCoreAdapter {
         program: script.to_string_lossy().to_string(),
         allow_model_call: true,
         session_id: Arc::new(Mutex::new(None)),
