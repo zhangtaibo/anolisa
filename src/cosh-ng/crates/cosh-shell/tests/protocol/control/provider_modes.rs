@@ -20,7 +20,7 @@ fn qwen_recommend_uses_stream_prompt_with_closed_stdin() {
             AgentEvent::TextDelta { text, .. } if text.contains("qwen stream completed")
         ) || matches!(
             event,
-            AgentEvent::AgentCompleted { summary, .. } if summary.contains("co analysis completed")
+            AgentEvent::AgentCompleted { summary, .. } if summary.contains("analysis completed")
         )),
         "expected qwen stream completion, got: {events:?}"
     );

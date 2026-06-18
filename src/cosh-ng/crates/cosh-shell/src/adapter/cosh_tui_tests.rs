@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use super::cosh_tui::CoshTuiAdapter;
 use super::AgentAdapter;
 use crate::types::{
-    AgentMode, AgentRequest, CommandBlock, CommandStatus, CoshApprovalMode, OutputRefs,
+    AgentEvent, AgentMode, AgentRequest, CommandBlock, CommandStatus, CoshApprovalMode, OutputRefs,
 };
 
 fn test_request() -> AgentRequest {
@@ -116,4 +116,51 @@ fn capabilities_match_expected() {
     assert!(caps.user_question);
     assert!(caps.cancellable);
     assert!(caps.control_protocol);
+}
+
+#[test]
+fn stream_parser_uses_neutral_status_messages() {
+    let script =
+        std::env::temp_dir().join(format!("cosh-tui-neutral-status-{}.sh", std::process::id()));
+    std::fs::write(
+        &script,
+        r#"#!/bin/sh
+printf '%s\n' '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"hidden reasoning"}}}'
+printf '%s\n' '{"type":"result","subtype":"success","session_id":"s","is_error":false,"result":"done"}'
+"#,
+    )
+    .expect("write mock cosh-tui");
+    let mut permissions = std::fs::metadata(&script)
+        .expect("mock cosh-tui metadata")
+        .permissions();
+    use std::os::unix::fs::PermissionsExt;
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&script, permissions).expect("chmod mock cosh-tui");
+
+    let adapter = CoshTuiAdapter {
+        program: script.to_string_lossy().to_string(),
+        allow_model_call: true,
+        session_id: Arc::new(Mutex::new(None)),
+        session_cwd: Arc::new(Mutex::new(None)),
+    };
+    let mut events = Vec::new();
+    let result = adapter.run_stream(&test_request(), &mut |event| {
+        events.push(event);
+        Ok(())
+    });
+    let _ = std::fs::remove_file(&script);
+    result.expect("run mock cosh-tui");
+
+    assert!(events.iter().any(|event| matches!(
+        event,
+        AgentEvent::StatusChanged { phase, message, .. }
+            if phase == "thinking" && message == "thinking"
+    )));
+    assert!(events.iter().any(|event| matches!(
+        event,
+        AgentEvent::AgentCompleted { summary, .. } if summary == "analysis completed"
+    )));
+    let debug = format!("{events:?}");
+    assert!(!debug.contains("claude"), "{debug}");
+    assert!(!debug.contains("co thinking"), "{debug}");
 }
