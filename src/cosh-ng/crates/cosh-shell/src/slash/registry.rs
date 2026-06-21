@@ -176,14 +176,7 @@ pub fn slash_command_registry() -> &'static [SlashCommandSpec] {
             scope: "session",
             state: SlashCommandState::Hidden,
         },
-        SlashCommandSpec {
-            name: "/skill",
-            usage: "/skill",
-            summary_id: MessageId::HelpSummarySkill,
-            group: None,
-            scope: "advisory",
-            state: SlashCommandState::Diagnostic,
-        },
+
         SlashCommandSpec {
             name: "/approval-mode",
             usage: "/approval-mode [recommend|auto|trust]",

@@ -57,7 +57,6 @@ impl<'a> SlashCommand<'a> {
                 Some(Self::Config(sub, value))
             }
             "/debug" => Some(Self::Debug(parts.next())),
-            "/skill" => Some(Self::Info(SlashInfoCommand::Skill)),
             "/agent" | "/cancel" | "/clear" | "/copy" | "/details" | "/explain" | "/select"
             | "/send-to-shell" | "/shell" => None,
             "/" => Some(Self::Noop),
@@ -77,7 +76,6 @@ impl<'a> SlashCommand<'a> {
 pub(super) enum SlashInfoCommand {
     Audit,
     Config,
-    Skill,
 }
 
 pub(super) enum RemovedCommand<'a> {
