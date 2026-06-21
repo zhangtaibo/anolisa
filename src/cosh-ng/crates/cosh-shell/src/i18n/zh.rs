@@ -593,5 +593,19 @@ pub(super) fn message(id: MessageId) -> &'static str {
         MessageId::ApprovalReceiptProviderNativeAllowedMessage => {
             "已允许 provider-native shell tool 执行"
         }
+        // Registry slash commands
+        MessageId::HelpGroupRegistry => "Registry",
+        MessageId::HelpSummaryExtensions => "列出/管理 cosh-core 扩展",
+        MessageId::HelpSummarySkills => "列出/查看 cosh-core 技能",
+        MessageId::SlashExtensionsTitle => "扩展",
+        MessageId::SlashSkillsTitle => "技能",
+        MessageId::SlashRegistryUnavailable => {
+            "此功能需要 cosh-core 后端支持。"
+        }
+        MessageId::SlashHooksShellSection => "Shell Hooks",
+        MessageId::SlashHooksAgentSection => "Agent Hooks",
+        MessageId::SlashHooksAgentUnavailable => "(cosh-core 后端不可用)",
+        MessageId::SlashExtensionsEmptyBody => "未安装扩展。",
+        MessageId::SlashSkillsEmptyBody => "未发现技能。",
     }
 }

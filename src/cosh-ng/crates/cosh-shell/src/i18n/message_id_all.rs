@@ -481,5 +481,17 @@ impl MessageId {
         MessageId::ApprovalReceiptSubjectBashProviderNative,
         MessageId::ApprovalReceiptBashSentToShellMessage,
         MessageId::ApprovalReceiptProviderNativeAllowedMessage,
+        // Registry slash commands
+        MessageId::HelpGroupRegistry,
+        MessageId::HelpSummaryExtensions,
+        MessageId::HelpSummarySkills,
+        MessageId::SlashExtensionsTitle,
+        MessageId::SlashSkillsTitle,
+        MessageId::SlashRegistryUnavailable,
+        MessageId::SlashHooksShellSection,
+        MessageId::SlashHooksAgentSection,
+        MessageId::SlashHooksAgentUnavailable,
+        MessageId::SlashExtensionsEmptyBody,
+        MessageId::SlashSkillsEmptyBody,
     ];
 }

@@ -587,6 +587,20 @@ pub(super) fn message(id: MessageId) -> &'static str {
         MessageId::QuestionInstructionNoAnswer => "No selectable answer is available.",
         MessageId::QuestionNoPendingTitle => "No pending question",
         MessageId::QuestionNoPendingBody => "There is no Agent question waiting for an answer.",
+        // Registry slash commands
+        MessageId::HelpGroupRegistry => "Registry",
+        MessageId::HelpSummaryExtensions => "list/manage cosh-core extensions",
+        MessageId::HelpSummarySkills => "list/inspect cosh-core skills",
+        MessageId::SlashExtensionsTitle => "Extensions",
+        MessageId::SlashSkillsTitle => "Skills",
+        MessageId::SlashRegistryUnavailable => {
+            "This feature requires cosh-core backend."
+        }
+        MessageId::SlashHooksShellSection => "Shell Hooks",
+        MessageId::SlashHooksAgentSection => "Agent Hooks",
+        MessageId::SlashHooksAgentUnavailable => "(cosh-core backend unavailable)",
+        MessageId::SlashExtensionsEmptyBody => "No extensions installed.",
+        MessageId::SlashSkillsEmptyBody => "No skills found.",
         _ => super::en_approval::message(id),
     }
 }

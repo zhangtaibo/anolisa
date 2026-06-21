@@ -483,4 +483,16 @@ pub enum MessageId {
     ApprovalReceiptSubjectBashProviderNative,
     ApprovalReceiptBashSentToShellMessage,
     ApprovalReceiptProviderNativeAllowedMessage,
+    // Registry slash commands
+    HelpGroupRegistry,
+    HelpSummaryExtensions,
+    HelpSummarySkills,
+    SlashExtensionsTitle,
+    SlashSkillsTitle,
+    SlashRegistryUnavailable,
+    SlashHooksShellSection,
+    SlashHooksAgentSection,
+    SlashHooksAgentUnavailable,
+    SlashExtensionsEmptyBody,
+    SlashSkillsEmptyBody,
 }
