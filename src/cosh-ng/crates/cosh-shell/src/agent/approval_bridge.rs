@@ -361,12 +361,7 @@ fn apply_auto_approved_request_outcome<W: Write>(
     if !request.hook_warnings.is_empty() {
         let mut body: Vec<String> = Vec::new();
         for w in &request.hook_warnings {
-            let icon = match w.decision.as_deref() {
-                Some("allow") | Some("approve") => "\u{2713}",
-                Some("ask") => "?",
-                Some("block") | Some("deny") => "\u{2717}",
-                _ => "\u{2022}",
-            };
+            let icon = hook_warning_icon(w.decision.as_deref());
             body.push(format!("\u{2502} {icon} {}", w.hook_name));
             for msg_line in w.message.lines() {
                 body.push(format!("\u{2502}   {msg_line}"));

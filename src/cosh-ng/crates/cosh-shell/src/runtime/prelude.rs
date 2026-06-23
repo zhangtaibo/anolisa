@@ -63,7 +63,7 @@ pub(crate) use crate::ui::{
     ApprovalJournalPanelModel, ApprovalPanelAction, ApprovalPanelModel, ApprovalReceiptPanelModel,
     CommandAssessmentSummaryModel, HookWarningView, MarkdownStreamBlock, NoticePanelModel, QuestionAnswerPanelModel,
     QuestionPanelModel, RatatuiInlineRenderer, RecommendationActionPanelModel,
-    RecommendationPanelModel,
+    RecommendationPanelModel, hook_warning_icon,
 };
 
 #[cfg(test)]

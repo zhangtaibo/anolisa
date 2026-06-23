@@ -728,7 +728,7 @@ fn hook_warning_color(decision: Option<&str>) -> Color {
 }
 
 /// Decision icon for hook warnings.
-fn hook_warning_icon(decision: Option<&str>) -> &'static str {
+pub(crate) fn hook_warning_icon(decision: Option<&str>) -> &'static str {
     match decision {
         Some("allow") | Some("approve") => "\u{2713}",  // ✓
         Some("ask") => "?",
