@@ -14,7 +14,7 @@ pub(crate) const ECS_RAM_ROLE_NAME: &str = "AliyunECSInstanceForSysomRole";
 
 /// Console URL template for ECS authorization.
 const CONSOLE_URL_TEMPLATE: &str =
-    "http://alinux.console.aliyun.com/{regionId}/guide/cosh?instance={instanceId}";
+    "https://alinux.console.aliyun.com/{regionId}/guide/cosh?instance={instanceId}";
 
 /// Polling interval for RAM Role authorization check.
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
@@ -94,8 +94,9 @@ pub(crate) fn get_ecs_region_id() -> Option<String> {
 
 /// Generate the Aliyun console URL for ECS authorization.
 pub(crate) fn generate_console_url(instance_id: &str, region_id: Option<&str>) -> String {
+    let region = region_id.unwrap_or("cn-hangzhou");
     CONSOLE_URL_TEMPLATE
-        .replace("{regionId}", region_id.unwrap_or(""))
+        .replace("{regionId}", region)
         .replace("{instanceId}", instance_id)
 }
 
@@ -177,6 +178,21 @@ pub(crate) fn detect_ecs_environment() -> Option<EcsInfo> {
         instance_id,
         console_url,
     })
+}
+
+/// Run the ECS authorization polling flow (blocking): poll → get credentials.
+/// Called from a background thread AFTER ECS has already been detected.
+pub(crate) fn poll_and_get_credentials() -> EcsTaskResult {
+    if poll_for_authorization() {
+        match get_sts_credentials() {
+            Some(creds) => EcsTaskResult::Authorized(creds),
+            None => EcsTaskResult::AuthorizationFailed("Failed to get STS credentials".into()),
+        }
+    } else {
+        EcsTaskResult::AuthorizationFailed(
+            "Timeout waiting for RAM Role authorization".into(),
+        )
+    }
 }
 
 /// Run full ECS authorization flow (blocking): detect → poll → get credentials.

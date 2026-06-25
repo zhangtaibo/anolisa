@@ -174,7 +174,6 @@ pub(crate) struct AuthState {
     pub(crate) handled_card_events: HashSet<String>,
     pub(crate) completed_ids: HashSet<String>,
     /// Channel for receiving ECS polling results from background thread.
-    #[allow(dead_code)]
     pub(crate) ecs_poll_rx: Option<mpsc::Receiver<ecs::EcsTaskResult>>,
 }
 
@@ -499,7 +498,6 @@ fn handle_auth_answer<W: std::io::Write>(
             Ok(true)
         }
         AuthPhase::ProviderAction { provider_idx } => {
-            let provider_idx = provider_idx;
             let existing = auth.existing_providers[provider_idx].clone();
             let is_active = existing.is_active;
 
@@ -648,7 +646,7 @@ fn handle_auth_answer<W: std::io::Write>(
                     // Start background polling thread
                     let (tx, rx) = mpsc::channel();
                     std::thread::spawn(move || {
-                        let result = ecs::run_ecs_authorization();
+                        let result = ecs::poll_and_get_credentials();
                         let _ = tx.send(result);
                     });
                     state.auth.ecs_poll_rx = Some(rx);
