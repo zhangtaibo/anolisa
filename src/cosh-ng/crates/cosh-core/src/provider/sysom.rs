@@ -3,8 +3,11 @@
 //! Uses ACS3-HMAC-SHA256 signing and parses the cumulative SSE stream format
 //! into incremental `GenerateEvent`s compatible with `ContentGenerator` trait.
 
+use std::io::{Read, Write};
+use std::net::{SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use chrono::Utc;
@@ -27,6 +30,13 @@ const API_ACTION: &str = "GenerateCopilotStreamResponse";
 const ECS_METADATA_ENDPOINT: &str = "http://100.100.100.200";
 const ECS_RAM_ROLE_NAME: &str = "AliyunECSInstanceForSysomRole";
 
+/// Cache TTL for instance_id (3 hours).
+const INSTANCE_ID_CACHE_TTL_SECS: u64 = 3 * 3600;
+/// Connect timeout for ECS metadata service.
+const METADATA_CONNECT_TIMEOUT: Duration = Duration::from_secs(1);
+/// Read timeout for ECS metadata service.
+const METADATA_READ_TIMEOUT: Duration = Duration::from_secs(2);
+
 /// Credentials that can be refreshed at runtime (for STS).
 #[derive(Debug, Clone)]
 struct SysomCredentials {
@@ -41,6 +51,7 @@ pub struct SysomProvider {
     credentials: RwLock<SysomCredentials>,
     is_sts: bool,
     cancelled: Arc<AtomicBool>,
+    instance_id: Option<String>,
 }
 
 impl SysomProvider {
@@ -50,6 +61,7 @@ impl SysomProvider {
         security_token: Option<&str>,
     ) -> Self {
         let is_sts = security_token.is_some();
+        let instance_id = resolve_instance_id();
         Self {
             endpoint: DEFAULT_ENDPOINT.to_string(),
             credentials: RwLock::new(SysomCredentials {
@@ -59,6 +71,7 @@ impl SysomProvider {
             }),
             is_sts,
             cancelled: Arc::new(AtomicBool::new(false)),
+            instance_id,
         }
     }
 
@@ -113,6 +126,10 @@ impl SysomProvider {
                     inner_obj.insert(k.clone(), v.clone());
                 }
             }
+        }
+
+        if let Some(ref id) = self.instance_id {
+            inner["instance_id"] = serde_json::json!(id);
         }
 
         // Wrap in llmParamString
@@ -256,6 +273,7 @@ impl SysomProvider {
             .header("x-acs-content-sha256", &hashed_payload)
             .header("content-type", "application/json; charset=utf-8")
             .header("accept", "text/event-stream")
+            .header("x-sysom-invoke-source", "cosh")
             .header("Authorization", &authorization);
 
         if let Some(ref token) = creds.security_token {
@@ -549,6 +567,77 @@ fn parse_sysom_sse_event(block: &str, state: &mut SseParseState) -> Option<Gener
     }
 
     None
+}
+
+// ---------------------------------------------------------------------------
+// Instance ID resolution with local cache
+// ---------------------------------------------------------------------------
+
+/// Resolve instance_id: read from local cache if valid, otherwise fetch from
+/// ECS metadata service and update the cache.
+fn resolve_instance_id() -> Option<String> {
+    let config_dir = dirs::home_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join(".copilot-shell");
+    let cache_path = config_dir.join("instance_id");
+
+    // Try reading from cache
+    if let Ok(metadata) = std::fs::metadata(&cache_path) {
+        if let Ok(modified) = metadata.modified() {
+            let age = modified.elapsed().unwrap_or(Duration::from_secs(u64::MAX));
+            if age < Duration::from_secs(INSTANCE_ID_CACHE_TTL_SECS) {
+                // Cache is still valid
+                let content = std::fs::read_to_string(&cache_path).unwrap_or_default();
+                let trimmed = content.trim();
+                if trimmed.is_empty() {
+                    // Empty file = previously failed to fetch
+                    return None;
+                }
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+
+    // Cache miss or expired — fetch from metadata service
+    let instance_id = fetch_instance_id_from_metadata();
+
+    // Write cache (create parent dir if needed)
+    if let Some(parent) = cache_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let content = instance_id.as_deref().unwrap_or("");
+    if let Err(e) = std::fs::write(&cache_path, content) {
+        tracing::debug!("failed to write instance_id cache: {e}");
+    }
+
+    instance_id
+}
+
+/// Fetch instance-id from ECS metadata service via raw TCP.
+/// Returns None if not running on ECS or if the request fails.
+fn fetch_instance_id_from_metadata() -> Option<String> {
+    let addr: SocketAddr = "100.100.100.200:80".parse().ok()?;
+    let mut stream = TcpStream::connect_timeout(&addr, METADATA_CONNECT_TIMEOUT).ok()?;
+    stream.set_read_timeout(Some(METADATA_READ_TIMEOUT)).ok()?;
+    stream
+        .set_write_timeout(Some(METADATA_CONNECT_TIMEOUT))
+        .ok()?;
+
+    let request = "GET /latest/meta-data/instance-id HTTP/1.0\r\nHost: 100.100.100.200\r\n\r\n";
+    stream.write_all(request.as_bytes()).ok()?;
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).ok()?;
+
+    // Parse HTTP response: skip headers (separated by \r\n\r\n)
+    let body = response.split("\r\n\r\n").nth(1)?;
+    let instance_id = body.trim();
+
+    if instance_id.starts_with("i-") {
+        Some(instance_id.to_string())
+    } else {
+        None
+    }
 }
 
 // ---------------------------------------------------------------------------
