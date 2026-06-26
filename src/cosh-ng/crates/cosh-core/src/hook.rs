@@ -195,7 +195,7 @@ impl HookSystem {
     }
 
     /// Set the current run_id for this agent run (used in hook inputs).
-    pub fn set_run_id(&mut self, run_id: String) {
+    pub(crate) fn set_run_id(&mut self, run_id: String) {
         self.run_id = Some(run_id);
     }
 
@@ -581,7 +581,8 @@ impl HookSystem {
     }
 
     /// Temporarily disable/enable a hook by name (used for sandbox bypass).
-    pub fn set_hook_disabled(&mut self, hook_name: &str, disabled: bool) {
+    /// Not persisted to states/hooks.json — only affects the current session.
+    pub(crate) fn set_hook_disabled(&mut self, hook_name: &str, disabled: bool) {
         if disabled {
             self.disabled.insert(hook_name.to_string());
         } else {

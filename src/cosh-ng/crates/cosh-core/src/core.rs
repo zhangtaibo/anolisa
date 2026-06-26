@@ -618,10 +618,12 @@ impl CoshCore {
 
                 let params_for_post_hook = params.clone();
 
+                let mut tool_result_already_emitted = false;
                 let result = match outcome {
                     Outcome::Allow => {
                         let result = self.execute_tool(&tc.name, params, &ctx).await;
                         self.emit_provider_native_tool_result(writer, &tc.id, &result);
+                        tool_result_already_emitted = true;
                         result
                     }
                     Outcome::RequireApproval => {
@@ -651,6 +653,7 @@ impl CoshCore {
                             ApprovalResult::Allowed => {
                                 let result = self.execute_tool(&tc.name, params, &ctx).await;
                                 self.emit_provider_native_tool_result(writer, &tc.id, &result);
+                                tool_result_already_emitted = true;
                                 result
                             }
                             ApprovalResult::HostExecutedShell { llm_content, exit_code } => {
@@ -700,14 +703,13 @@ impl CoshCore {
 
                 // ─── Hook: PostToolUseFailure ───
                 if result.is_error {
-                    // Emit tool_result BEFORE running PostToolUseFailure hooks.
-                    // This is critical for the Control Protocol path: when a command
-                    // fails in cosh-shell's foreground PTY (e.g., sandbox bwrap error),
-                    // cosh-shell delivers HostExecutedShell and starts a stall timer.
-                    // If cosh-core doesn't produce output quickly, cosh-shell triggers
-                    // "Agent recovery" which races against our PostToolUseFailure hooks.
-                    // Emitting tool_result here signals progress to cosh-shell.
-                    self.emit_provider_native_tool_result(writer, &tc.id, &result);
+                    // Emit tool_result BEFORE running PostToolUseFailure hooks, but only
+                    // if it hasn't been emitted yet. The Allowed path already emits
+                    // in-line; HostExecutedShell needs this early emit to prevent
+                    // cosh-shell stall timeout from racing against hook execution.
+                    if !tool_result_already_emitted {
+                        self.emit_provider_native_tool_result(writer, &tc.id, &result);
+                    }
                     let failure_hook = self
                         .hook_system
                         .fire_post_tool_use_failure(
@@ -753,8 +755,11 @@ impl CoshCore {
                                 self.hook_system.set_hook_disabled("sandbox-guard", true);
                                 let retry_params = serde_json::json!({"command": &bypass.original_command});
                                 let retry = self.execute_tool(&tc.name, retry_params, &ctx).await;
-                                self.emit_provider_native_tool_result(writer, &tc.id, &retry);
+                                // Re-enable immediately after execute, before any other
+                                // operation. execute_tool returns ToolResult (infallible),
+                                // so this line is always reached.
                                 self.hook_system.set_hook_disabled("sandbox-guard", false);
+                                self.emit_provider_native_tool_result(writer, &tc.id, &retry);
                                 result = retry;
                             }
                             ApprovalResult::HostExecutedShell { llm_content, exit_code } => {
