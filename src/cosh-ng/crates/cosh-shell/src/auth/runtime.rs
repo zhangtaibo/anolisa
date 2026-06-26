@@ -1060,8 +1060,8 @@ fn render_current_auth_panel<W: std::io::Write>(
                 format!("ECS Instance ID: {}", instance_id),
             ];
 
-            // Generate QR code text
-            if let Ok(qr_string) = qr2term::generate_qr_string(console_url) {
+            // Generate QR code text (plain Unicode, no ANSI codes)
+            if let Some(qr_string) = generate_qr_text(console_url) {
                 body.push(String::new());
                 body.push("Or scan the QR code:".to_string());
                 for line in qr_string.lines() {
@@ -1213,4 +1213,74 @@ fn escape_toml(s: &str) -> String {
     s.replace('\\', "\\\\")
         .replace('"', "\\\"")
         .replace('\n', "\\n")
+}
+
+/// Generate a plain-text QR code using Unicode half-block characters.
+///
+/// Uses `█`, `▀`, `▄`, and space to render the QR code without ANSI escape
+/// codes. This avoids issues with the notice panel renderer stripping ANSI.
+///
+/// On a dark terminal (light foreground on dark background):
+/// - `█` (full block) → foreground/light → QR "light" module
+/// - ` ` (space)      → background/dark  → QR "dark" module
+/// - `▀` (upper half) → top light, bottom dark
+/// - `▄` (lower half) → top dark, bottom light
+fn generate_qr_text(data: &str) -> Option<String> {
+    use qrcode::QrCode;
+
+    let code = QrCode::new(data.as_bytes()).ok()?;
+    let width = code.width();
+    let colors = code.to_colors();
+    let margin = 2usize;
+    let total_width = width + 2 * margin;
+
+    let mut result = String::new();
+
+    let light_row: String = "\u{2588}".repeat(total_width);
+
+    // Quiet zone top
+    for _ in 0..margin {
+        result.push_str(&light_row);
+        result.push('\n');
+    }
+
+    // QR data rows (two module rows per text line)
+    let mut y = 0;
+    while y < width {
+        // Left margin
+        for _ in 0..margin {
+            result.push('\u{2588}');
+        }
+
+        for x in 0..width {
+            let top_dark = colors[y * width + x] == qrcode::Color::Dark;
+            let bottom_dark = if y + 1 < width {
+                colors[(y + 1) * width + x] == qrcode::Color::Dark
+            } else {
+                false
+            };
+
+            result.push(match (top_dark, bottom_dark) {
+                (true, true) => ' ',
+                (true, false) => '\u{2584}',  // ▄
+                (false, true) => '\u{2580}',  // ▀
+                (false, false) => '\u{2588}', // █
+            });
+        }
+
+        // Right margin
+        for _ in 0..margin {
+            result.push('\u{2588}');
+        }
+        result.push('\n');
+        y += 2;
+    }
+
+    // Quiet zone bottom
+    for _ in 0..margin {
+        result.push_str(&light_row);
+        result.push('\n');
+    }
+
+    Some(result)
 }
