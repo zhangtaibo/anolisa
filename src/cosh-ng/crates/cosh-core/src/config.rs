@@ -211,8 +211,8 @@ impl CoreConfig {
                             return config;
                         }
                         Err(e) => {
-                            tracing::warn!(
-                                "failed to parse {}: {}",
+                            eprintln!(
+                                "[cosh-core] Warning: failed to parse {}: {}",
                                 candidate.display(),
                                 e
                             );
