@@ -16,6 +16,8 @@ pub struct CoreConfig {
     pub skills: SkillsConfig,
     #[serde(default)]
     pub session: SessionConfig,
+    #[serde(default)]
+    pub logging: LoggingConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -151,6 +153,23 @@ fn default_persist_dir() -> String {
     "sessions".to_string()
 }
 
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct LoggingConfig {
+    pub level: Option<String>,
+}
+
+impl LoggingConfig {
+    pub fn effective_level(&self, verbose: bool) -> String {
+        if let Ok(v) = std::env::var("COSH_LOG") {
+            return v;
+        }
+        if verbose {
+            return "debug".to_string();
+        }
+        self.level.clone().unwrap_or_else(|| "warn".to_string())
+    }
+}
+
 pub fn config_dir() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -192,8 +211,8 @@ impl CoreConfig {
                             return config;
                         }
                         Err(e) => {
-                            eprintln!(
-                                "[cosh-core] Warning: failed to parse {}: {}",
+                            tracing::warn!(
+                                "failed to parse {}: {}",
                                 candidate.display(),
                                 e
                             );
