@@ -114,9 +114,18 @@ pub struct StopResult {
     pub notifications: Vec<HookNotification>,
 }
 
+/// Sandbox bypass request extracted from hook output.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SandboxBypassRequest {
+    pub original_command: String,
+    pub reason: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct PostToolUseFailureResult {
     pub notifications: Vec<HookNotification>,
+    /// If present, a hook is requesting sandbox bypass approval.
+    pub sandbox_bypass_request: Option<SandboxBypassRequest>,
 }
 
 #[derive(Debug, Clone)]
@@ -519,7 +528,7 @@ impl HookSystem {
         skill_context: Option<&Value>,
     ) -> PostToolUseFailureResult {
         if !self.enabled {
-            return PostToolUseFailureResult { notifications: vec![] };
+            return PostToolUseFailureResult { notifications: vec![], sandbox_bypass_request: None };
         }
 
         let defs: Vec<&HookDefinition> = self
@@ -529,7 +538,7 @@ impl HookSystem {
             .collect();
 
         if defs.is_empty() {
-            return PostToolUseFailureResult { notifications: vec![] };
+            return PostToolUseFailureResult { notifications: vec![], sandbox_bypass_request: None };
         }
 
         let mut event_data = serde_json::json!({
@@ -545,11 +554,29 @@ impl HookSystem {
         let outputs = self.run_hooks(&defs, &input).await;
 
         let mut notifications = Vec::new();
+        let mut sandbox_bypass_request = None;
         for (i, out) in outputs {
             let name = Self::hook_name(defs[i], i);
             self.collect_notifications(&out, &name, &mut notifications);
+            // Extract sandbox_bypass_request from hookSpecificOutput (last valid wins).
+            if let Some(ref specific) = out.hook_specific_output {
+                if let Some(req) = specific.get("sandbox_bypass_request") {
+                    if let Ok(parsed) = serde_json::from_value::<SandboxBypassRequest>(req.clone()) {
+                        sandbox_bypass_request = Some(parsed);
+                    }
+                }
+            }
         }
-        PostToolUseFailureResult { notifications }
+        PostToolUseFailureResult { notifications, sandbox_bypass_request }
+    }
+
+    /// Temporarily disable/enable a hook by name (used for sandbox bypass).
+    pub fn set_hook_disabled(&mut self, hook_name: &str, disabled: bool) {
+        if disabled {
+            self.disabled.insert(hook_name.to_string());
+        } else {
+            self.disabled.remove(hook_name);
+        }
     }
 
     pub async fn fire_before_model(
