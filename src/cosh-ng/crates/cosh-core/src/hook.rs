@@ -290,14 +290,10 @@ impl HookSystem {
     }
 
     /// 把 tool 输出文本包装为 copilot-shell 协议要求的 JSON 对象。
-    /// - 已是合法 JSON object/array → 原样返回
-    /// - 纯文本 → 包装为 {"llmContent": text, "returnDisplay": text}
+    /// 对齐 copilot-shell 行为：始终将原始文本作为 llmContent/returnDisplay
+    /// 传递，即使文本本身是合法 JSON。copilot-shell 的 coreToolScheduler
+    /// 会先提取文本再包装，hook 脚本始终看到统一结构。
     fn wrap_tool_response(tool_response: &str) -> Value {
-        if let Ok(v) = serde_json::from_str::<Value>(tool_response) {
-            if v.is_object() || v.is_array() {
-                return v;
-            }
-        }
         serde_json::json!({
             "llmContent": tool_response,
             "returnDisplay": tool_response,
@@ -590,6 +586,7 @@ impl HookSystem {
         session_id: &str,
         cwd: &str,
         has_tool_calls: bool,
+        response_text: &str,
     ) -> AfterModelResult {
         if !self.enabled {
             return AfterModelResult { notifications: vec![] };
@@ -600,8 +597,21 @@ impl HookSystem {
             return AfterModelResult { notifications: vec![] };
         }
 
+        // 对齐 copilot-shell hookTranslator.toHookLLMResponse 格式：
+        // hook 脚本（如 pii_checker）通过 llm_response.text 或
+        // llm_response.candidates[].content.parts 读取模型响应。
         let event_data = serde_json::json!({
             "has_tool_calls": has_tool_calls,
+            "llm_response": {
+                "text": response_text,
+                "candidates": [{
+                    "content": {
+                        "role": "model",
+                        "parts": [response_text],
+                    },
+                    "finishReason": "STOP",
+                }],
+            },
         });
         let input = self.build_input(session_id, cwd, HookEventName::AfterModel, event_data);
         let outputs = self.run_hooks(&defs, &input).await;
@@ -1215,18 +1225,20 @@ mod tests {
 
     #[test]
     fn wrap_tool_response_passes_through_object() {
+        // 对齐 copilot-shell 行为：即使原始文本是 JSON，仍作为文本包装进 llmContent。
         let raw = r#"{"llmContent":"x","returnDisplay":"y"}"#;
         let v = HookSystem::wrap_tool_response(raw);
-        assert_eq!(v["llmContent"], "x");
-        assert_eq!(v["returnDisplay"], "y");
+        assert_eq!(v["llmContent"], raw);
+        assert_eq!(v["returnDisplay"], raw);
     }
 
     #[test]
-    fn wrap_tool_response_passes_through_array() {
+    fn wrap_tool_response_wraps_array_as_text() {
+        // 对齐 copilot-shell：数组也作为文本包装，而非透传。
         let raw = r#"[1,2,3]"#;
         let v = HookSystem::wrap_tool_response(raw);
-        assert!(v.is_array());
-        assert_eq!(v[0], 1);
+        assert_eq!(v["llmContent"], raw);
+        assert_eq!(v["returnDisplay"], raw);
     }
 
     #[test]

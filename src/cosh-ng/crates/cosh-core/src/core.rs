@@ -408,7 +408,7 @@ impl CoshCore {
             // ─── Hook: AfterModel ───
             let after_model_result = self
                 .hook_system
-                .fire_after_model(&self.session_id, &cwd_str, !tool_calls.is_empty())
+                .fire_after_model(&self.session_id, &cwd_str, !tool_calls.is_empty(), &text_buf)
                 .await;
             self.emit_hook_notifications(writer, &after_model_result.notifications, None);
 
