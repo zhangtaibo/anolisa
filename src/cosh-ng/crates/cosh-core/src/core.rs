@@ -159,6 +159,10 @@ impl CoshCore {
         W: Write,
         R: AsyncBufReadExt + Unpin,
     {
+        // Generate a unique run_id for this agent run.
+        let run_id = uuid::Uuid::new_v4().to_string();
+        self.hook_system.set_run_id(run_id);
+
         // ─── Hook: UserPromptSubmit ───
         let cwd_str = self.cwd().to_string_lossy().to_string();
         let prompt_result = self
@@ -280,7 +284,7 @@ impl CoshCore {
             // ─── Hook: BeforeModel ───
             let before_model_result = self
                 .hook_system
-                .fire_before_model(&self.session_id, &cwd_str, self.messages.len())
+                .fire_before_model(&self.session_id, &cwd_str, &self.model, &self.messages)
                 .await;
             self.emit_hook_notifications(writer, &before_model_result.notifications, None);
 
@@ -306,6 +310,7 @@ impl CoshCore {
 
             let mut text_buf = String::new();
             let mut tool_calls: Vec<PendingToolCall> = Vec::new();
+            let mut usage_info: Option<(u32, u32, u32)> = None;
             let mut block_index: u32 = 0;
             let mut text_block_started = false;
             let mut thinking_block_started = false;
@@ -398,7 +403,9 @@ impl CoshCore {
                             block_index = block_index.max(bi + 1);
                         }
                     }
-                    GenerateEvent::Usage { .. } => {}
+                    GenerateEvent::Usage { prompt_tokens, completion_tokens, total_tokens } => {
+                        usage_info = Some((prompt_tokens, completion_tokens, total_tokens));
+                    }
                     GenerateEvent::MessageEnd => break,
                     GenerateEvent::Error(e) => return Err(e),
                 }
@@ -408,7 +415,10 @@ impl CoshCore {
             // ─── Hook: AfterModel ───
             let after_model_result = self
                 .hook_system
-                .fire_after_model(&self.session_id, &cwd_str, !tool_calls.is_empty(), &text_buf)
+                .fire_after_model(
+                    &self.session_id, &cwd_str, !tool_calls.is_empty(), &text_buf,
+                    &self.model, &self.messages, usage_info,
+                )
                 .await;
             self.emit_hook_notifications(writer, &after_model_result.notifications, None);
 
